@@ -1,6 +1,8 @@
 from flask import Flask
 import json
 
+from evalRetrieval import evalRetrieval
+
 app = Flask(__name__)
 
 if __name__ == "__main__":
@@ -9,8 +11,9 @@ if __name__ == "__main__":
 
 @app.route("/")
 def eval():
+    res = evalRetrieval()
+    print(res)
     return {
         "statusCode": 500,
         "body": json.dumps({"message": "Hello World"}),
     }
-    # eval()
