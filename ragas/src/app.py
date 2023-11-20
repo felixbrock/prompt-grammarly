@@ -1,4 +1,5 @@
 from flask import Flask
+import json
 
 app = Flask(__name__)
 
@@ -9,7 +10,7 @@ if __name__ == "__main__":
 @app.route("/")
 def eval():
     return {
-        "statusCode": 200,
+        "statusCode": 500,
         "body": json.dumps({"message": "Hello World"}),
     }
     # eval()

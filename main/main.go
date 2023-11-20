@@ -1,7 +1,7 @@
 package main
 
-import "github.com/felixbrock/lemonai/internal/router"
+import "github.com/felixbrock/lemonai/internal/app"
 
 func main() {
-	router.Router()
+	app.App()
 }
