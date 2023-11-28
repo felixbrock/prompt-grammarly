@@ -8,13 +8,8 @@ import (
 )
 
 func App() {
-	// http.HandleFunc("/", home)
 
-	http.Handle("/eval", apphandler.AppHandler(eval))
-
-	// http.HandleFunc("/clicked", clicked)
-
-	// http.HandleFunc("/team", team)
+	http.Handle("/", apphandler.AppHandler(home))
 
 	log.Println("App running on 8000...")
 	log.Fatal(http.ListenAndServe(":8000", nil))
