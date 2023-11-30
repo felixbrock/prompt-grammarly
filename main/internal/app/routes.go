@@ -19,52 +19,40 @@ type Response struct {
 	StatusCode int
 }
 
-type RunProto struct {
+type runProto struct {
 	AssistantId string
 }
 
-type Run struct {
+type run struct {
 	Id     string `json:"id"`
 	Status string `json:"status"`
 }
 
-type MessageProto struct {
+type messageProto struct {
 	Role    string
 	Content []byte
 }
 
-type MessageContentText struct {
+type messageContentText struct {
 	Value string `json:"value"`
 }
 
-type MessageContent struct {
-	Text MessageContentText `json:"text"`
+type messageContent struct {
+	Text messageContentText `json:"text"`
 }
 
-type Message struct {
+type message struct {
 	Id      string           `json:"id"`
-	Content []MessageContent `json:"content"`
+	Content []messageContent `json:"content"`
 	Role    string           `json:"role"`
 }
 
-type MessageListing struct {
-	Data []Message `json:"data"`
+type messageListing struct {
+	Data []message `json:"data"`
 }
 
-type Thread struct {
+type thread struct {
 	Id string `json:"id"`
-}
-
-type ImprovementSuggestion struct {
-	Original  string `json:"original"`
-	Improved  string `json:"new"`
-	Reasoning string `json:"reasoning"`
-}
-
-type Improvement struct {
-	OriginalPrompt         string
-	ImprovementSuggestions []ImprovementSuggestion
-	ImprovedPrompt         *string
 }
 
 type assistant struct {
@@ -106,35 +94,35 @@ func request[T any](method string, url string, headerProtos []string, reqBody []
 	return t, nil
 }
 
-func postRun(threadId string, runId string, headerProtos []string) (*Run, error) {
+func getRun(threadId string, runId string, headerProtos []string) (*run, error) {
 	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/runs/%s`, threadId, runId)
 
-	run, err := request[Run]("GET", url, headerProtos, nil)
+	entity, err := request[run]("GET", url, headerProtos, nil)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return run, nil
+	return entity, nil
 }
 
-func createRun(runProto RunProto, threadId string, headerProtos []string) (*Run, error) {
-	body := []byte(fmt.Sprintf(`{"assistant_id": "%s"}`, runProto.AssistantId))
+func postRun(proto runProto, threadId string, headerProtos []string) (*run, error) {
+	body := []byte(fmt.Sprintf(`{"assistant_id": "%s"}`, proto.AssistantId))
 	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/runs`, threadId)
 
-	run, err := request[Run]("POST", url, headerProtos, body)
+	entity, err := request[run]("POST", url, headerProtos, body)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return run, nil
+	return entity, nil
 }
 
-func listMsgs(threadId string, headerProtos []string) (*[]Message, error) {
+func getMsgs(threadId string, headerProtos []string) (*[]message, error) {
 	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/messages`, threadId)
 
-	msgs, err := request[MessageListing]("GET", url, headerProtos, nil)
+	msgs, err := request[messageListing]("GET", url, headerProtos, nil)
 
 	if err != nil {
 		return nil, err
@@ -143,11 +131,11 @@ func listMsgs(threadId string, headerProtos []string) (*[]Message, error) {
 	return &msgs.Data, nil
 }
 
-func createMsg(msgProto MessageProto, threadId string, headerProtos []string) (*string, error) {
-	body := []byte(fmt.Sprintf(`{"role": "%s", "content": %s}`, msgProto.Role, msgProto.Content))
+func postMsg(proto messageProto, threadId string, headerProtos []string) (*string, error) {
+	body := []byte(fmt.Sprintf(`{"role": "%s", "content": %s}`, proto.Role, proto.Content))
 	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/messages`, threadId)
 
-	msg, err := request[Message]("POST", url, headerProtos, body)
+	msg, err := request[message]("POST", url, headerProtos, body)
 
 	if err != nil {
 		return nil, err
@@ -156,8 +144,8 @@ func createMsg(msgProto MessageProto, threadId string, headerProtos []string) (*
 	return &msg.Id, nil
 }
 
-func createThread(headerProtos []string) (*string, error) {
-	resp, err := request[Thread]("POST", "https://api.openai.com/v1/threads", headerProtos, nil)
+func postThread(headerProtos []string) (*string, error) {
+	resp, err := request[thread]("POST", "https://api.openai.com/v1/threads", headerProtos, nil)
 
 	if err != nil {
 		return nil, err
@@ -168,7 +156,7 @@ func createThread(headerProtos []string) (*string, error) {
 
 func deleteThread(threadId string, headerProtos []string) error {
 	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s`, threadId)
-	_, err := request[Thread]("DELETE", url, headerProtos, nil)
+	_, err := request[thread]("DELETE", url, headerProtos, nil)
 
 	if err != nil {
 		return err
@@ -184,24 +172,24 @@ func runAssistant(threadId *string, userPrompt string, assistant assistant, head
 		return nil, err
 	}
 
-	run, err := createRun(RunProto{AssistantId: assistant.Id}, *threadId, headerProtos)
+	entity, err := postRun(runProto{AssistantId: assistant.Id}, *threadId, headerProtos)
 
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("waiting for %s assistant run to complete...", assistant.Name)
-	for run.Status != "completed" {
-		run, err = postRun(*threadId, run.Id, headerProtos)
+	fmt.Printf("waiting for %s assistant entity to complete...", assistant.Name)
+	for entity.Status != "completed" {
+		entity, err = getRun(*threadId, entity.Id, headerProtos)
 		if err != nil {
 			return nil, err
 		}
 		time.Sleep(1000)
 	}
-	fmt.Printf("completed %s assistant run.", assistant.Name)
+	fmt.Printf("completed %s assistant entity.", assistant.Name)
 
-	var msgs *[]Message
-	msgs, err = listMsgs(*threadId, headerProtos)
+	var msgs *[]message
+	msgs, err = getMsgs(*threadId, headerProtos)
 
 	if err != nil {
 		return nil, err
@@ -223,7 +211,7 @@ func writeUserPrompt(threadId *string, prompt string, headerProtos []string) err
 		return err
 	}
 
-	_, err = createMsg(MessageProto{Role: "user", Content: msgContent}, *threadId, headerProtos)
+	_, err = postMsg(messageProto{Role: "user", Content: msgContent}, *threadId, headerProtos)
 
 	if err != nil {
 		return err
@@ -319,7 +307,7 @@ func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
 		"OpenAI-Beta:assistants=v1",
 	}
 
-	threadId, err := createThread(headerProtos)
+	threadId, err := postThread(headerProtos)
 
 	defer func() {
 		err = deleteThread(*threadId, headerProtos)
