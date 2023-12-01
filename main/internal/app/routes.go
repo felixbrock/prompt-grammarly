@@ -95,7 +95,7 @@ func request[T any](method string, url string, headerProtos []string, reqBody []
 }
 
 func getRun(threadId string, runId string, headerProtos []string) (*run, error) {
-	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/runs/%s`, threadId, runId)
+	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs/%s", threadId, runId)
 
 	entity, err := request[run]("GET", url, headerProtos, nil)
 
@@ -108,7 +108,7 @@ func getRun(threadId string, runId string, headerProtos []string) (*run, error) 
 
 func postRun(proto runProto, threadId string, headerProtos []string) (*run, error) {
 	body := []byte(fmt.Sprintf(`{"assistant_id": "%s"}`, proto.AssistantId))
-	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/runs`, threadId)
+	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs", threadId)
 
 	entity, err := request[run]("POST", url, headerProtos, body)
 
@@ -120,7 +120,7 @@ func postRun(proto runProto, threadId string, headerProtos []string) (*run, erro
 }
 
 func getMsgs(threadId string, headerProtos []string) (*[]message, error) {
-	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/messages`, threadId)
+	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
 
 	msgs, err := request[messageListing]("GET", url, headerProtos, nil)
 
@@ -133,7 +133,7 @@ func getMsgs(threadId string, headerProtos []string) (*[]message, error) {
 
 func postMsg(proto messageProto, threadId string, headerProtos []string) (*string, error) {
 	body := []byte(fmt.Sprintf(`{"role": "%s", "content": %s}`, proto.Role, proto.Content))
-	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s/messages`, threadId)
+	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
 
 	msg, err := request[message]("POST", url, headerProtos, body)
 
@@ -178,7 +178,7 @@ func runAssistant(threadId *string, userPrompt string, assistant assistant, head
 		return nil, err
 	}
 
-	fmt.Printf("waiting for %s assistant entity to complete...", assistant.Name)
+	fmt.Printf("Waiting for %s assistant entity to complete...\n", assistant.Name)
 	for entity.Status != "completed" {
 		entity, err = getRun(*threadId, entity.Id, headerProtos)
 		if err != nil {
@@ -186,7 +186,7 @@ func runAssistant(threadId *string, userPrompt string, assistant assistant, head
 		}
 		time.Sleep(1000)
 	}
-	fmt.Printf("completed %s assistant entity.", assistant.Name)
+	fmt.Printf("Completed %s assistant entity\n", assistant.Name)
 
 	var msgs *[]message
 	msgs, err = getMsgs(*threadId, headerProtos)
@@ -195,7 +195,10 @@ func runAssistant(threadId *string, userPrompt string, assistant assistant, head
 		return nil, err
 	}
 
-	msg := (*msgs)[len(*msgs)-1]
+	if len(*msgs) == 0 {
+		return nil, errors.New("unexpected thread messages state error")
+	}
+	msg := (*msgs)[0]
 	if msg.Role != "assistant" || len(msg.Content) != 1 {
 		return nil, errors.New("unexpected assistant response error")
 	}
@@ -225,6 +228,7 @@ func genAssistantUserPrompt(assistantName string, prompt []byte) string {
 		`Evaluate the %s of the following model instruction:
 
 		%s
+
 		`, strings.ToLower(assistantName), prompt)
 }
 
@@ -240,6 +244,7 @@ func genOperatorUserPrompt(assistantName string, prompt []byte) string {
 		Suggestions:
 
 		%s
+
 		`, strings.ToLower(assistantName), prompt)
 }
 
@@ -252,7 +257,7 @@ func improve(threadId *string, prompt []byte, targetAssistant assistant, headerP
 		return nil, err
 	}
 
-	fmt.Printf(`%s >> %s`, targetAssistant.Name, *msg)
+	fmt.Printf("%s >> %s\n", targetAssistant.Name, *msg)
 
 	operator := assistant{Id: "asst_qUn97Ck3zzdvNToMVAMhNzTk", Name: "Operator"}
 
@@ -264,7 +269,7 @@ func improve(threadId *string, prompt []byte, targetAssistant assistant, headerP
 		return nil, err
 	}
 
-	fmt.Printf(`%s >> %s`, operator.Name, *msg)
+	fmt.Printf("%s >> %s\n", operator.Name, *msg)
 
 	return msg, nil
 }
@@ -275,7 +280,7 @@ func readJSON[T any](reader io.ReadCloser) (*T, error) {
 	defer func() {
 		err = reader.Close()
 		if err != nil {
-			slog.Error(fmt.Sprintf(`Error occured: %s`, err.Error()))
+			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 		}
 	}()
 
@@ -301,6 +306,10 @@ func readJSON[T any](reader io.ReadCloser) (*T, error) {
 func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
 	chatReq, err := readJSON[chatRequest](r.Body)
 
+	if err != nil {
+		return &apphandler.AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+	}
+
 	headerProtos := []string{
 		"Content-Type:application/json",
 		"Authorization:Bearer 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",
@@ -312,7 +321,7 @@ func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
 	defer func() {
 		err = deleteThread(*threadId, headerProtos)
 		if err != nil {
-			fmt.Printf(`Error occured: %s`, err.Error())
+			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 		}
 	}()
 
