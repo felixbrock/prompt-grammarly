@@ -11,8 +11,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	apphandler "github.com/felixbrock/lemonai/internal/appHandler"
 )
 
 type Response struct {
@@ -304,11 +302,11 @@ func readJSON[T any](reader io.ReadCloser) (*T, error) {
 	return t, nil
 }
 
-func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
+func chat(w http.ResponseWriter, r *http.Request) *AppError {
 	chatReq, err := readJSON[chatRequest](r.Body)
 
 	if err != nil {
-		return &apphandler.AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+		return &AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
 	}
 
 	headerProtos := []string{
@@ -327,7 +325,7 @@ func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
 	}()
 
 	if err != nil {
-		return &apphandler.AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+		return &AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
 	}
 
 	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
@@ -341,7 +339,7 @@ func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
 		tempPrompt, err = improve(threadId, prompt, assistants[i], headerProtos)
 
 		if err != nil {
-			return &apphandler.AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+			return &AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
 		}
 
 		prompt = *tempPrompt
@@ -354,13 +352,14 @@ func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
 	// tmpl.Execute(w, nil)
 }
 
-func home(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
-	tmpl := template.Must(template.ParseFiles("templates/index.html"))
-	tmpl.Execute(w, nil)
+func home(w http.ResponseWriter, r *http.Request) *component {
+	return
+	// tmpl := template.Must(template.ParseFiles("templates/index.html"))
+	// tmpl.Execute(w, nil)
 	return nil
 }
 
-func app(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
+func app(w http.ResponseWriter, r *http.Request) *AppError {
 	tmpl := template.Must(template.ParseFiles("templates/fragments/textbox.html"))
 	tmpl.Execute(w, nil)
 	return nil

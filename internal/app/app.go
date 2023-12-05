@@ -4,16 +4,19 @@ import (
 	"log"
 	"net/http"
 
-	apphandler "github.com/felixbrock/lemonai/internal/appHandler"
+	"github.com/a-h/templ"
 )
 
 func App() {
 
-	http.Handle("/dist/static/",
-		http.StripPrefix("/dist/static/", http.FileServer(http.Dir("dist/static"))))
-	http.Handle("/", apphandler.AppHandler(home))
-	http.Handle("/app", apphandler.AppHandler(app))
-	http.Handle("/chat", apphandler.AppHandler(chat))
+	http.Handle("/static/",
+		http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+	homeTempl := home()
+	http.Handle("/", templ.Handler())
+
+	http.Handle("/app", AppHandler(app))
+	http.Handle("/chat", AppHandler(chat))
 
 	log.Println("App running on 8000...")
 	log.Fatal(http.ListenAndServe(":8000", nil))
