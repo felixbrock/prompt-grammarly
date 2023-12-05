@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
@@ -353,17 +354,17 @@ func chat(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
 	// tmpl.Execute(w, nil)
 }
 
-// func eval(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
-// 	v, err := http.Get("http://0.0.0.0:80")
+func home(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
+	tmpl := template.Must(template.ParseFiles("templates/index.html"))
+	tmpl.Execute(w, nil)
+	return nil
+}
 
-// 	fmt.Println(v)
-// 	fmt.Println(err)
-
-// 	if err != nil {
-// 		return &apphandler.AppError{Error: err, Message: "test went wrong", Code: 500}
-// 	}
-// 	return nil
-// }
+func app(w http.ResponseWriter, r *http.Request) *apphandler.AppError {
+	tmpl := template.Must(template.ParseFiles("templates/fragments/textbox.html"))
+	tmpl.Execute(w, nil)
+	return nil
+}
 
 // func clicked(w http.ResponseWriter, r *http.Request) {
 // 	tmpl := template.Must(template.ParseFiles("./templates/fragments/button.html"))

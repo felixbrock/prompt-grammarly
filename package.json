@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "tailwindcss": "latest"
+  },
+  "scripts": {
+    "build": "bunx tailwindcss -i ./static/index.css -o ./dist/static/index.css --watch"
+  }
+}

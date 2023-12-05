@@ -4,14 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LEMONAI</title>
+  <link rel="stylesheet" href="/dist/static/index.css"/>
   <script src="https://unpkg.com/htmx.org@1.9.6"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-<main>
-  <button hx-post="/clicked" hx-swap="outerHTML">
-    Click Me
-  </button>
-</main>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div hx-get="/app" hx-trigger="load" hx-swap="innerHTML"></div>
 </body>
 </html>
