@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/felixbrock/lemonai/internal/components"
 )
 
 type Response struct {
@@ -61,6 +62,10 @@ type assistant struct {
 
 type chatRequest struct {
 	Prompt string `json:"prompt"`
+}
+
+type appRequest struct {
+	Name string `json:"name"`
 }
 
 func request[T any](method string, url string, headerProtos []string, reqBody []byte) (*T, error) {
@@ -302,11 +307,11 @@ func readJSON[T any](reader io.ReadCloser) (*T, error) {
 	return t, nil
 }
 
-func chat(w http.ResponseWriter, r *http.Request) *AppError {
+func chat(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 	chatReq, err := readJSON[chatRequest](r.Body)
 
 	if err != nil {
-		return &AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+		return &ComponentResponse{Error: err, Message: "Service temporarily unavailable.", Code: 500}
 	}
 
 	headerProtos := []string{
@@ -325,7 +330,7 @@ func chat(w http.ResponseWriter, r *http.Request) *AppError {
 	}()
 
 	if err != nil {
-		return &AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+		return &ComponentResponse{Error: err, Message: "Service temporarily unavailable.", Code: 500}
 	}
 
 	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
@@ -339,7 +344,7 @@ func chat(w http.ResponseWriter, r *http.Request) *AppError {
 		tempPrompt, err = improve(threadId, prompt, assistants[i], headerProtos)
 
 		if err != nil {
-			return &AppError{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+			return &ComponentResponse{Error: err, Message: "Service temporarily unavailable.", Code: 500}
 		}
 
 		prompt = *tempPrompt
@@ -352,17 +357,12 @@ func chat(w http.ResponseWriter, r *http.Request) *AppError {
 	// tmpl.Execute(w, nil)
 }
 
-func home(w http.ResponseWriter, r *http.Request) *component {
-	return
-	// tmpl := template.Must(template.ParseFiles("templates/index.html"))
-	// tmpl.Execute(w, nil)
-	return nil
+func index(w http.ResponseWriter, r *http.Request) *ComponentResponse {
+	return &ComponentResponse{Component: components.Index(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
-func app(w http.ResponseWriter, r *http.Request) *AppError {
-	tmpl := template.Must(template.ParseFiles("templates/fragments/textbox.html"))
-	tmpl.Execute(w, nil)
-	return nil
+func app(w http.ResponseWriter, r *http.Request) *ComponentResponse {
+	return &ComponentResponse{Component: components.Textbox(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
 // func clicked(w http.ResponseWriter, r *http.Request) {

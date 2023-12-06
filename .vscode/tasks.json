@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "process",
+      "label": "bun: build",
+      "command": "sh",
+      "args": ["${workspaceFolder}/scripts/build.sh"]
+    }
+  ]
+}

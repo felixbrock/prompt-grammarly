@@ -4,7 +4,7 @@
     "tailwindcss": "latest"
   },
   "scripts": {
-    "build": "bunx tailwindcss -i ./static/index.css -o ./static/index-transpiled.css && ~/go/bin/templ generate -path ./internal/components",
-    "start": "bun run build && ~/go/bin/air -c .air.toml"
+    "build": "sh ./scripts/build.sh",
+    "start": "~/go/bin/air -c .air.toml"
   }
 }
