@@ -362,7 +362,7 @@ func index(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 }
 
 func app(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.Textbox(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	return &ComponentResponse{Component: components.App(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
 // func clicked(w http.ResponseWriter, r *http.Request) {

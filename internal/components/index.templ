@@ -7,13 +7,11 @@ templ Index() {
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>LEMONAI</title>
-			<link rel="stylesheet" href="/static/index-transpiled.css"/>
+			<link rel="stylesheet" href="/static/index_transpiled.css"/>
 			<script src="https://unpkg.com/htmx.org@1.9.6"></script>
 		</head>
-		<body>
+		<body hx-get="/app" hx-trigger="load" hx-swap="innerHTML">
 			<noscript>You need to enable JavaScript to run this app.</noscript>
-			<input name="name" type="text"/>
-			<div hx-get="/app" hx-trigger="load" hx-include="[name='name']" hx-swap="innerHTML"></div>
 		</body>
 	</html>
 }
