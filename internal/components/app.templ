@@ -1,7 +1,7 @@
 package components
 
 templ header() {
-	<header class="bg-indigo-600 pb-24">
+	<header class="bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 pb-24">
 		<div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
 			<div class="relative flex items-center justify-center py-5 lg:justify-between">
 				<!-- Logo -->
@@ -11,167 +11,16 @@ templ header() {
 						<img class="h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=300" alt="Your Company"/>
 					</a>
 				</div>
-				<!-- Menu button -->
-				<div class="absolute right-0 flex-shrink-0 lg:hidden">
-					<!-- Mobile menu button -->
-					<button type="button" class="relative inline-flex items-center justify-center rounded-md bg-transparent p-2 text-indigo-200 hover:bg-white hover:bg-opacity-10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white" aria-expanded="false">
-						<span class="absolute -inset-0.5"></span>
-						<span class="sr-only">Open main menu</span>
-						<!-- Menu open: "hidden", Menu closed: "block" -->
-						<svg class="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
-						</svg>
-						<!-- Menu open: "block", Menu closed: "hidden" -->
-						<svg class="hidden h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-						</svg>
-					</button>
-				</div>
-			</div>
-		</div>
-		<!-- Mobile menu, show/hide based on mobile menu state. -->
-		<div class="lg:hidden">
-			<!--
-        Mobile menu overlay, show/hide based on mobile menu state.
-
-        Entering: "duration-150 ease-out"
-          From: "opacity-0"
-          To: "opacity-100"
-        Leaving: "duration-150 ease-in"
-          From: "opacity-100"
-          To: "opacity-0"
-      -->
-			<div class="fixed inset-0 z-20 bg-black bg-opacity-25" aria-hidden="true"></div>
-			<!--
-        Mobile menu, show/hide based on mobile menu state.
-
-        Entering: "duration-150 ease-out"
-          From: "opacity-0 scale-95"
-          To: "opacity-100 scale-100"
-        Leaving: "duration-150 ease-in"
-          From: "opacity-100 scale-100"
-          To: "opacity-0 scale-95"
-      -->
-			<div class="absolute inset-x-0 top-0 z-30 mx-auto w-full max-w-3xl origin-top transform p-2 transition">
-				<div class="divide-y divide-gray-200 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
-					<div class="pb-2 pt-3">
-						<div class="flex items-center justify-between px-4">
-							<div>
-								<img class="h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600" alt="Your Company"/>
-							</div>
-							<div class="-mr-2">
-								<button type="button" class="relative inline-flex items-center justify-center rounded-md bg-white p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-									<span class="absolute -inset-0.5"></span>
-									<span class="sr-only">Close menu</span>
-									<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-									</svg>
-								</button>
-							</div>
-						</div>
-						<div class="mt-3 space-y-1 px-2">
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Home</a>
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Profile</a>
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Resources</a>
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Company Directory</a>
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Openings</a>
-						</div>
-					</div>
-					<div class="pb-2 pt-4">
-						<div class="flex items-center px-5">
-							<div class="flex-shrink-0">
-								<img class="h-10 w-10 rounded-full" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt=""/>
-							</div>
-							<div class="ml-3 min-w-0 flex-1">
-								<div class="truncate text-base font-medium text-gray-800">Tom Cook</div>
-								<div class="truncate text-sm font-medium text-gray-500">tom@example.com</div>
-							</div>
-							<button type="button" class="relative ml-auto flex-shrink-0 rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-								<span class="absolute -inset-1.5"></span>
-								<span class="sr-only">View notifications</span>
-								<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"></path>
-								</svg>
-							</button>
-						</div>
-						<div class="mt-3 space-y-1 px-2">
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Your Profile</a>
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Settings</a>
-							<a href="#" class="block rounded-md px-3 py-2 text-base font-medium text-gray-900 hover:bg-gray-100 hover:text-gray-800">Sign out</a>
-						</div>
-					</div>
-				</div>
 			</div>
 		</div>
 	</header>
 }
 
-templ section(title string) {
-	<section aria-labelledby="section-1-title">
-		<h2 class="sr-only" id="section-1-title">Section title</h2>
-		<div class="overflow-hidden rounded-lg bg-white shadow">
-			<div class="p-6">
-				@Textbox(title)
-			</div>
-		</div>
-	</section>
-}
-
-templ initWindow() {
-	<!-- Main 2 column grid -->
-	<div class="h-full grid grid-cols-1 items-start gap-4 lg:grid-cols-1 lg:gap-8">
-		<!-- Left column -->
-		<div class="grid grid-cols-1 gap-4 ">
-			@section("Your Prompt")
-		</div>
-	</div>
-}
-
-templ editWindow() {
-	<!-- Main 2 column grid -->
-	<div class="h-full grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-8">
-		<!-- Left column -->
-		<ul role="list" class="grid grid-cols-1 gap-4">
-			<div class="grid grid-cols-1 gap-4">
-				@section("Your Prompt")
-			</div>
-			<div class="grid grid-cols-1 gap-4">
-				@section("Suggestion")
-			</div>
-		</ul>
-		<!-- Right column -->
-		<div class="grid grid-cols-1 gap-4 ">
-			@section("Optimized Prompt")
-		</div>
-	</div>
-}
-
-templ viewWindow() {
-	<!-- Main 2 column grid -->
-	<div class="h-full grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-8">
-		<!-- Left column -->
-		<div class="grid grid-cols-1 gap-4 ">
-			@section("Your Prompt")
-		</div>
-		<!-- Right column -->
-		<div class="grid grid-cols-1 gap-4">
-			@section("Optimized Prompt")
-		</div>
-	</div>
-}
-
-templ main(promptState string) {
+templ main() {
 	<main class="flex-grow -mt-24 pb-8">
-		<div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
+		<div class="h-full mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
 			<h1 class="sr-only">Lemonai Prompt Optimizer</h1>
-			switch promptState {
-				case "edit":
-					@editWindow()
-				case "view":
-					@viewWindow()
-				default:
-					@initWindow()
-			}
+			<div class="h-full" id="editor"></div>
 		</div>
 	</main>
 }
@@ -185,9 +34,17 @@ templ footer() {
 }
 
 templ App() {
+	<input
+ 		hx-get="/suggestion"
+ 		hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
+ 		hx-trigger="click,keyup"
+	/>
+	<button hx-get="/editor/draft" hx-trigger="click" hx-target="#editor">draft</button>
+	<button hx-get="/editor/edit" hx-trigger="click" hx-target="#editor">edit</button>
+	<button hx-get="/editor/review" hx-trigger="click" hx-target="#editor">review</button>
 	<div class="h-screen bg-gray-100 flex flex-col">
 		@header()
-		@main("edit")
+		@main()
 		@footer()
 	</div>
 }

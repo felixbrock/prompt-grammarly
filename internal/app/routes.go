@@ -64,8 +64,8 @@ type chatRequest struct {
 	Prompt string `json:"prompt"`
 }
 
-type appRequest struct {
-	Name string `json:"name"`
+type editorRequest struct {
+	EditorName string `json:"editorName"`
 }
 
 func request[T any](method string, url string, headerProtos []string, reqBody []byte) (*T, error) {
@@ -308,10 +308,10 @@ func readJSON[T any](reader io.ReadCloser) (*T, error) {
 }
 
 func chat(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	chatReq, err := readJSON[chatRequest](r.Body)
+	chatReqBody, err := readJSON[chatRequest](r.Body)
 
 	if err != nil {
-		return &ComponentResponse{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+		return &ComponentResponse{Error: err, Message: "service temporarily unavailable", Code: 500}
 	}
 
 	headerProtos := []string{
@@ -330,7 +330,7 @@ func chat(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 	}()
 
 	if err != nil {
-		return &ComponentResponse{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+		return &ComponentResponse{Error: err, Message: "service temporarily unavailable", Code: 500}
 	}
 
 	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
@@ -338,13 +338,13 @@ func chat(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "Clarity"},
 		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "Consistency"}}
 
-	prompt := []byte(chatReq.Prompt)
+	prompt := []byte(chatReqBody.Prompt)
 	for i := 0; i < len(assistants); i++ {
 		var tempPrompt *[]byte
 		tempPrompt, err = improve(threadId, prompt, assistants[i], headerProtos)
 
 		if err != nil {
-			return &ComponentResponse{Error: err, Message: "Service temporarily unavailable.", Code: 500}
+			return &ComponentResponse{Error: err, Message: "service temporarily unavailable", Code: 500}
 		}
 
 		prompt = *tempPrompt
@@ -363,6 +363,16 @@ func index(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 
 func app(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 	return &ComponentResponse{Component: components.App(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
+
+func draftModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
+	return &ComponentResponse{Component: components.DraftModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
+func editModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
+	return &ComponentResponse{Component: components.EditModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
+func reviewModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
+	return &ComponentResponse{Component: components.ViewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
 // func clicked(w http.ResponseWriter, r *http.Request) {

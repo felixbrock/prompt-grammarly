@@ -1,0 +1,112 @@
+package components
+
+templ textField(enabled bool) {
+	<textarea
+ 		if !enabled {
+			disabled
+		}
+ 		name="comment"
+ 		id="comment"
+ 		class="h-full  w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+	>
+		This is a test
+	</textarea>
+}
+
+templ suggestion() {
+	<h3 class="text-base font-semibold leading-6 text-gray-900">
+		<a href="#" class="focus:outline-none">
+			<!-- Extend touch target to entire panel -->
+			<span class="absolute inset-0" aria-hidden="true"></span>
+			Request time off
+		</a>
+	</h3>
+	<p class="mt-2 text-sm text-gray-500">Doloribus dolores nostrum quia qui natus officia quod et dolorem. Sit repellendus qui ut at blanditiis et quo et molestiae.</p>
+}
+
+templ suggestionCard() {
+	<section aria-labelledby="section-1-title" class="h-full">
+		<h2 class="sr-only" id="section-1-title">Foo</h2>
+		<div class="h-full overflow-hidden rounded-lg bg-white shadow p-4">
+			<div class="h-full flex flex-col">
+				<div class="h-11">
+					<div class="h-full -ml-4 -mt-2 flex flex-wrap items-center justify-between sm:flex-nowrap">
+						<div class="ml-4 mt-2">
+							<h3 class="text-base font-semibold leading-6 text-gray-900">Foo</h3>
+						</div>
+					</div>
+				</div>
+				<div class="flex-grow mt-2">
+					@suggestion()
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+templ editorWindow(title string, buttonLabel string, enabled bool) {
+	<section aria-labelledby="section-1-title" class="h-full">
+		<h2 class="sr-only" id="section-1-title">{ title }</h2>
+		<div class="h-full overflow-hidden rounded-lg bg-white shadow p-4">
+			<div class="h-full flex flex-col">
+				<div class="h-11">
+					<div class="h-full -ml-4 -mt-2 flex flex-wrap items-center justify-between sm:flex-nowrap">
+						<div class="ml-4 mt-2">
+							<h3 class="text-base font-semibold leading-6 text-gray-900">{ title }</h3>
+						</div>
+						<div class="ml-4 mt-2 flex-shrink-0">
+							if buttonLabel != "" {
+								<button type="button" class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">{ buttonLabel }</button>
+							}
+						</div>
+					</div>
+				</div>
+				<div class="flex-grow mt-2">
+					@textField(enabled)
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+templ DraftModeEditor() {
+	<div class="h-3/4 w-full">
+		@editorWindow("Your Prompt","Optimize",true)
+	</div>
+	<div class="h-1/4 w-full"></div>
+}
+
+templ EditModeEditor() {
+	<div class="h-3/4 pb-4">
+		<!-- Main 2 column grid -->
+		<div class="h-full grid grid-cols-1 gap-4 lg:grid-cols-2">
+			<!-- Left column -->
+			<div class="h-full">
+				@editorWindow("Your Prompt","Optimize",true)
+			</div>
+			<!-- Right column -->
+			<div class="h-full">
+				@editorWindow("Optimized Prompt","",false)
+			</div>
+		</div>
+	</div>
+	<div class="overflow-x-scroll h-1/4">
+		@suggestionCard()
+		@suggestionCard()
+		@suggestionCard()
+	</div>
+}
+
+templ ViewModeEditor() {
+	<div class="h-3/4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<!-- Left column -->
+		<div class="h-full">
+			@editorWindow("Your Prompt","Optimize",true)
+		</div>
+		<!-- Right column -->
+		<div class="h-full">
+			@editorWindow("Optimized Prompt","",false)
+		</div>
+	</div>
+	<div class="h-1/4 w-full"></div>
+}
