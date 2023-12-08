@@ -1,14 +1,20 @@
 package components
 
 templ header() {
-	<header class="bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 pb-24">
-		<div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
+	<header class=" bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 pb-24">
+		<div class="h-20 mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
 			<div class="relative flex items-center justify-center py-5 lg:justify-between">
 				<!-- Logo -->
 				<div class="absolute left-0 flex-shrink-0 lg:static">
 					<a href="#">
-						<span class="sr-only">Your Company</span>
-						<img class="h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=300" alt="Your Company"/>
+						<span class="sr-only">Lemonai</span>
+						<img class="h-8 w-auto" src="/static/images/logo.png" alt="Lemonai"/>
+					</a>
+				</div>
+				<div class="absolute right-0 flex-shrink-0 lg:static">
+					<a href="https://www.github.com">
+						<span class="sr-only">Github</span>
+						<img class="h-8 w-auto" src="/static/images/github-mark.svg" alt="Github"/>
 					</a>
 				</div>
 			</div>
@@ -17,34 +23,19 @@ templ header() {
 }
 
 templ main() {
-	<main class="flex-grow -mt-24 pb-8">
+	<main class="h-[calc(100vh-5rem)] -mt-24">
 		<div class="h-full mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
 			<h1 class="sr-only">Lemonai Prompt Optimizer</h1>
-			<div class="h-full" id="editor"></div>
+			<div class="h-full" id="editor">
+				@Loading()
+			</div>
 		</div>
 	</main>
 }
 
-templ footer() {
-	<footer>
-		<div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
-			<div class="border-t border-gray-200 py-8 text-center text-sm text-gray-500 sm:text-left"><span class="block sm:inline">&copy; 2021 Your Company, Inc.</span> <span class="block sm:inline">All rights reserved.</span></div>
-		</div>
-	</footer>
-}
-
 templ App() {
-	<input
- 		hx-get="/suggestion"
- 		hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
- 		hx-trigger="click,keyup"
-	/>
-	<button hx-get="/editor/draft" hx-trigger="click" hx-target="#editor">draft</button>
-	<button hx-get="/editor/edit" hx-trigger="click" hx-target="#editor">edit</button>
-	<button hx-get="/editor/review" hx-trigger="click" hx-target="#editor">review</button>
-	<div class="h-screen bg-gray-100 flex flex-col">
+	<div class="flex flex-col h-screen bg-gray-100">
 		@header()
 		@main()
-		@footer()
 	</div>
 }

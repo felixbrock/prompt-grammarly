@@ -5,8 +5,8 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "./tmp/main"
-  cmd = "sh ./scripts/build.sh && go build -o ./tmp/main ."
-  delay = 0
+  cmd = "export GOPORT=8000 && sh ./scripts/build.sh && go build -o ./tmp/main ."
+  delay = 1000
   exclude_dir = ["node_modules", "assets", "static", "tmp", "vendor", "testdata"]
   exclude_file = []
   exclude_regex = ["_test.go", "_templ.go"]

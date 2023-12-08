@@ -8,6 +8,12 @@ module.exports = {
       fontFamily: {
         sans: ["Inter var", ...defaultTheme.fontFamily.sans],
       },
+      maxWidth: {
+        "1/2": "50%",
+      },
+      minWidth: {
+        "1/4": "25%",
+      },
       colors: {
         lemonaiMain: "#d65cf7",
       },

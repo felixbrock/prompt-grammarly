@@ -1,9 +1,24 @@
 package app
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
+
+type appConfig struct {
+	Port string
+}
+
+func config() appConfig {
+	port := os.Getenv("GOPORT")
+	if port == "" {
+		port = "8000"
+	}
+
+	return appConfig{Port: port}
+}
 
 func App() {
 
@@ -17,6 +32,7 @@ func App() {
 	http.Handle("/editor/review", ComponentHandler(reviewModeEditor))
 	http.Handle("/chat", ComponentHandler(chat))
 
-	log.Println("App running on 8000...")
-	log.Fatal(http.ListenAndServe(":8000", nil))
+	config := config()
+	log.Printf("App running on %s...", config.Port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", config.Port), nil))
 }
