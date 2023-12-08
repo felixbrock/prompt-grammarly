@@ -70,14 +70,14 @@ templ editorWindow(title string, buttonLabel string, enabled bool) {
 }
 
 templ DraftModeEditor() {
-	<div class="h-3/4 w-full">
+	<div class="h-1/2 w-full">
 		@editorWindow("Your Prompt","Optimize",true)
 	</div>
-	<div class="h-1/4 w-full"></div>
+	<div class="h-1/2 w-full"></div>
 }
 
 templ EditModeEditor() {
-	<div class="h-3/4 pb-4">
+	<div class="h-1/2 pb-4">
 		<!-- Main 2 column grid -->
 		<div class="h-full grid grid-cols-1 gap-4 lg:grid-cols-2">
 			<!-- Left column -->
@@ -90,7 +90,7 @@ templ EditModeEditor() {
 			</div>
 		</div>
 	</div>
-	<div class="overflow-x-scroll h-1/4">
+	<div class="overflow-x-scroll h-1/2">
 		@suggestionCard()
 		@suggestionCard()
 		@suggestionCard()
@@ -98,7 +98,7 @@ templ EditModeEditor() {
 }
 
 templ ViewModeEditor() {
-	<div class="h-3/4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+	<div class="h-1/2 grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<!-- Left column -->
 		<div class="h-full">
 			@editorWindow("Your Prompt","Optimize",true)
@@ -108,5 +108,5 @@ templ ViewModeEditor() {
 			@editorWindow("Optimized Prompt","",false)
 		</div>
 	</div>
-	<div class="h-1/4 w-full"></div>
+	<div class="h-1/2 w-full"></div>
 }

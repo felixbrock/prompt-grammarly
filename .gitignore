@@ -5,6 +5,8 @@
 ### CUSTOM ###
 ######################
 /tmp
+*_templ.go
+*_transpiled.css
 
 ### Emacs ###
 # -*- mode: gitignore; -*-
