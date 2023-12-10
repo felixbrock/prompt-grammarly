@@ -8,13 +8,13 @@ templ header() {
 				<div class="absolute left-0 flex-shrink-0 lg:static">
 					<a href="#">
 						<span class="sr-only">Lemonai</span>
-						<img class="h-8 w-auto" src="/static/images/logo.png" alt="Lemonai"/>
+						<img class="h-10 w-auto" src="/static/images/lemonai-1x.png" alt="Lemonai"/>
 					</a>
 				</div>
 				<div class="absolute right-0 flex-shrink-0 lg:static">
 					<a href="https://www.github.com">
 						<span class="sr-only">Github</span>
-						<img class="h-8 w-auto" src="/static/images/github-mark.svg" alt="Github"/>
+						<img class="h-10 w-auto" src="/static/images/github-mark.svg" alt="Github"/>
 					</a>
 				</div>
 			</div>
@@ -27,7 +27,7 @@ templ main() {
 		<div class="h-full mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
 			<h1 class="sr-only">Lemonai Prompt Optimizer</h1>
 			<div class="h-full" id="editor">
-				@Loading()
+				@EditModeEditor()
 			</div>
 		</div>
 	</main>

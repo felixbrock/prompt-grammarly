@@ -372,7 +372,7 @@ func editModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 	return &ComponentResponse{Component: components.EditModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 func reviewModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.ViewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	return &ComponentResponse{Component: components.ReviewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
 // func clicked(w http.ResponseWriter, r *http.Request) {

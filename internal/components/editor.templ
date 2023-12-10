@@ -1,38 +1,21 @@
 package components
 
-templ textField(enabled bool) {
-	<textarea
- 		if !enabled {
-			disabled
+type hxConfig struct {
+	HxGet    string
+	HxTarget string
+}
+
+type button struct {
+	Label    string
+	HxConfig hxConfig
+}
+
+templ actionBar(buttons []button) {
+	<div class="flex flex-row-reverse gap-x-4">
+		for i := 0; i < len(buttons); i++ {
+			<button type="button" class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" hx-get={ buttons[i].HxConfig.HxGet } hx-trigger="click" hx-target={ buttons[i].HxConfig.HxTarget }>{ buttons[i].Label }</button>
 		}
- 		name="comment"
- 		id="comment"
- 		class="h-full  w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-	>
-		This is a test
-	</textarea>
-}
-
-templ suggestionCardField() {
-	<div class="text-left leading-tight px-2 py-3">
-		<h3 class=" text-gray-500 ">Reasoning</h3>
-		<p class="text-sm text-gray-700">Since lorem ipsum lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum</p>
 	</div>
-}
-
-templ suggestionCard() {
-	<li class="overflow-hidden grow shrink-0 min-h-max w-full my-2 rounded-xl border border-gray-200 divide-y divide-gray-100">
-		<div class="text-left leading-tight ">
-			<div class="bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500">
-				<h3 class="p-2 text-gray-900 ">Clarity Suggestion</h3>
-			</div>
-			<p class="p-2">Since lorem ipsum lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum</p>
-		</div>
-		<dl>
-			@suggestionCardField()
-			@suggestionCardField()
-		</dl>
-	</li>
 }
 
 templ sectionWrapper(title string) {
@@ -44,59 +27,69 @@ templ sectionWrapper(title string) {
 	</section>
 }
 
-templ editorWindow(title string, buttonLabel string, enabled bool) {
+templ editorWindow(title string, enabled bool) {
 	@sectionWrapper(title) {
 		<div class="h-full flex flex-col">
-			<div class="h-11">
+			<div class="h-6">
 				<div class="h-full -ml-4 -mt-2 flex flex-wrap items-center justify-between sm:flex-nowrap">
 					<div class="ml-4 mt-2">
 						<h3 class="text-base font-semibold leading-6 text-gray-900">{ title }</h3>
 					</div>
-					<div class="ml-4 mt-2 flex-shrink-0">
-						if buttonLabel != "" {
-							<button type="button" class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" hx-get="/editor/edit" hx-trigger="click" hx-target="#editor">{ buttonLabel }</button>
-						}
-					</div>
 				</div>
 			</div>
 			<div class="grow mt-2">
-				@textField(enabled)
+				@TextField(enabled)
 			</div>
 		</div>
 	}
 }
 
 templ DraftModeEditor() {
-	<div class="h-full pb-4">
-		@editorWindow("Your Prompt","Optimize",true)
+	<div class="h-3/20 w-full pb-4">
+		@editorWindow("Custom Optimization Goal",true)
+	</div>
+	<div class="h-15/20 pb-4">
+		@editorWindow("Your Prompt",true)
+	</div>
+	<div class="h-2/20 pb-4">
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/editor/review", HxTarget: "#editor"}}})
 	</div>
 }
 
 templ EditModeEditor() {
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
-	<div class="h-1/2 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("Your Prompt","Optimize",true)
-		@editorWindow("Optimized Prompt","",false)
+	<div class="h-3/20 w-full pb-4">
+		@editorWindow("Custom Optimization Goal",true)
 	</div>
-	<div class="h-1/2 pb-4">
+	<div class="h-7/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+		@editorWindow("Your Prompt",true)
+		@editorWindow("Optimized Prompt",false)
+	</div>
+	<div class="h-8/20 pb-4">
 		@sectionWrapper("Suggestions") {
 			<ul class="px-2 h-full flex flex-col flex-nowrap gap-4 overflow-y-auto overflow-x-hidden">
-				@suggestionCard()
-				@suggestionCard()
-				@suggestionCard()
-				@suggestionCard()
-				@suggestionCard()
-				@suggestionCard()
-				@suggestionCard()
+				@SuggestionCard()
+				@SuggestionCard()
+				@SuggestionCard()
+				@SuggestionCard()
+				@SuggestionCard()
+				@SuggestionCard()
+				@SuggestionCard()
 			</ul>
 		}
 	</div>
+	<div class="h-2/20 pb-4">
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/editor/review", HxTarget: "#editor"}}})
+	</div>
 }
 
-templ ViewModeEditor() {
-	<div class="h-full pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("Your Prompt","Optimize",true)
-		@editorWindow("Optimized Prompt","",false)
+templ ReviewModeEditor() {
+	<div class="h-9/10 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+		@editorWindow("Your Prompt",true)
+		@editorWindow("Optimized Prompt",false)
+	</div>
+	<div class="h-1/10 pb-4">
+		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{HxGet: "/editor/edit", HxTarget: "#editor"}}})
 	</div>
 }
