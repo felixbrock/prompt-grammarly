@@ -52,7 +52,7 @@ templ DraftModeEditor() {
 		@editorWindow("Your Prompt",true)
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/editor/review", HxTarget: "#editor"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/optimize", HxTarget: "#editor"}}})
 	</div>
 }
 
@@ -80,7 +80,7 @@ templ EditModeEditor() {
 		}
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/editor/review", HxTarget: "#editor"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/optimize", HxTarget: "#editor"}}})
 	</div>
 }
 

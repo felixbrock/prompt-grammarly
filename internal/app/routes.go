@@ -375,6 +375,10 @@ func reviewModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse
 	return &ComponentResponse{Component: components.ReviewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
+func optimize(w http.ResponseWriter, r *http.Request) *ComponentResponse {
+	return &ComponentResponse{Component: components.Loading(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
+
 // func clicked(w http.ResponseWriter, r *http.Request) {
 // 	tmpl := template.Must(template.ParseFiles("./templates/fragments/button.html"))
 // 	tmpl.Execute(w, nil)

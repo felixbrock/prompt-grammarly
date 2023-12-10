@@ -1,7 +1,26 @@
 package components
 
+import "strings"
+
+templ loadingState(dimension string, finished bool) {
+	<p class="m-y-2 italic text-sm font-bold">
+		if finished {
+			<span class="text-green-500">FINISHED { strings.ToUpper(dimension) } OPTIMIZATION</span>
+		} else {
+			OPTIMIZING FOR { strings.ToUpper(dimension) }...
+		}
+	</p>
+}
+
 templ Loading() {
 	<div class="flex items-center justify-center h-full w-full">
-		<img class="animate-pulse" src="/static/images/lemonai-3x.png"/>
+		<div class="flex flex-col items-center gap-2">
+			<img class="animate-pulse" src="/static/images/lemonai-2x.png"/>
+			@loadingState("Custom Instructions", false)
+			@loadingState("Contextual Richness", true)
+			@loadingState("Conciseness", false)
+			@loadingState("Clarity", false)
+			@loadingState("Consistency", false)
+		</div>
 	</div>
 }
