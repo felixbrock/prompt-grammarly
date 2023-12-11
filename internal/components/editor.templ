@@ -1,8 +1,9 @@
 package components
 
 type hxConfig struct {
-	HxGet    string
-	HxTarget string
+	Endpoint string
+	Method   string
+	Target   string
 }
 
 type button struct {
@@ -13,7 +14,7 @@ type button struct {
 templ actionBar(buttons []button) {
 	<div class="flex flex-row-reverse gap-x-4">
 		for i := 0; i < len(buttons); i++ {
-			<button type="button" class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" hx-get={ buttons[i].HxConfig.HxGet } hx-trigger="click" hx-target={ buttons[i].HxConfig.HxTarget }>{ buttons[i].Label }</button>
+			<button type="button" class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" hx-get={ buttons[i].HxConfig.Endpoint } hx-trigger="click" hx-target={ buttons[i].HxConfig.Target }>{ buttons[i].Label }</button>
 		}
 	</div>
 }
@@ -52,7 +53,7 @@ templ DraftModeEditor() {
 		@editorWindow("Your Prompt",true)
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/optimize", HxTarget: "#editor"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimize", Method: "POST", Target: "#editor"}}})
 	</div>
 }
 
@@ -80,7 +81,7 @@ templ EditModeEditor() {
 		}
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{HxGet: "/optimize", HxTarget: "#editor"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimize", Method: "POST", Target: "#editor"}}})
 	</div>
 }
 
@@ -90,6 +91,6 @@ templ ReviewModeEditor() {
 		@editorWindow("Optimized Prompt",false)
 	</div>
 	<div class="h-1/10 pb-4">
-		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{HxGet: "/editor/edit", HxTarget: "#editor"}}})
+		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{Endpoint: "/editor/edit", Method: "POST", Target: "#editor"}}})
 	</div>
 }

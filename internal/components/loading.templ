@@ -2,25 +2,48 @@ package components
 
 import "strings"
 
-templ loadingState(dimension string, finished bool) {
+type AnalysisState struct {
+	CustomInstructions bool
+	ContextualRichness bool
+	Conciseness        bool
+	Clarity            bool
+	Consistency        bool
+}
+
+templ msgWrapper() {
 	<p class="m-y-2 italic text-sm font-bold">
-		if finished {
-			<span class="text-green-500">FINISHED { strings.ToUpper(dimension) } OPTIMIZATION</span>
-		} else {
-			OPTIMIZING FOR { strings.ToUpper(dimension) }...
-		}
+		{ children... }
 	</p>
 }
 
-templ Loading() {
-	<div class="flex items-center justify-center h-full w-full">
+templ analysisStateMsg(dimension string, finished bool) {
+	@msgWrapper {
+		if finished {
+			<span class="text-green-500">FINISHED { strings.ToUpper(dimension) } ANALYSIS</span>
+		} else {
+			<span>ANALYZING FOR { strings.ToUpper(dimension) }...</span>
+		}
+	}
+}
+
+templ optimizationStateMsg() {
+	@msgWrapper {
+		<span>OPTIMIZING PROMPT...</span>
+	}
+}
+
+templ Loading(optimizationId string, analysisState AnalysisState) {
+	<div class="flex items-center justify-center h-full w-full" hx-get={ "optimizations/" + optimizationId + "/state" } hx-trigger="every 2s">
 		<div class="flex flex-col items-center gap-2">
 			<img class="animate-pulse" src="/static/images/lemonai-2x.png"/>
-			@loadingState("Custom Instructions", false)
-			@loadingState("Contextual Richness", true)
-			@loadingState("Conciseness", false)
-			@loadingState("Clarity", false)
-			@loadingState("Consistency", false)
+			@analysisStateMsg("Custom Instructions", analysisState.CustomInstructions)
+			@analysisStateMsg("Contextual Richness", analysisState.ContextualRichness)
+			@analysisStateMsg("Conciseness", analysisState.Conciseness)
+			@analysisStateMsg("Clarity", analysisState.Clarity)
+			@analysisStateMsg("Consistency", analysisState.Consistency)
+			if analysisState.CustomInstructions && analysisState.ContextualRichness && analysisState.Conciseness && analysisState.Clarity && analysisState.Consistency {
+				@optimizationStateMsg()
+			}
 		</div>
 	</div>
 }

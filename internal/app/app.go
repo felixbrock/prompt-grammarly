@@ -30,8 +30,10 @@ func App() {
 	http.Handle("/editor/draft", ComponentHandler(draftModeEditor))
 	http.Handle("/editor/edit", ComponentHandler(editModeEditor))
 	http.Handle("/editor/review", ComponentHandler(reviewModeEditor))
-	http.Handle("/optimize", ComponentHandler(optimize))
-	http.Handle("/chat", ComponentHandler(chat))
+
+	http.Handle("/optimizations", ComponentHandler(handleOptimizationReq))
+	http.Handle("/read", ComponentHandler(read))
+	http.Handle("/write", ComponentHandler(write))
 
 	config := config()
 	log.Printf("App running on %s...", config.Port)

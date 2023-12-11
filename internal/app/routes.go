@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/felixbrock/lemonai/internal/components"
+	"github.com/felixbrock/lemonai/internal/domain"
+	"github.com/felixbrock/lemonai/internal/persistence"
+	"github.com/google/uuid"
 )
 
 type Response struct {
@@ -60,15 +63,24 @@ type assistant struct {
 	Name string
 }
 
-type chatRequest struct {
-	Prompt string `json:"prompt"`
+type optimizationReq struct {
+	OriginalPrompt       string `json:"originalPrompt"`
+	Instructions         string `json:"instructions"`
+	OptimizationParentId string `json:"optimizationParentId"`
 }
 
-type editorRequest struct {
+type editorReq struct {
 	EditorName string `json:"editorName"`
 }
 
-func request[T any](method string, url string, headerProtos []string, reqBody []byte) (*T, error) {
+type reqConfig struct {
+	Method string
+	Url string
+	HeaderProtos []string
+	Body []byte
+}
+
+func request[T any](config reqConfig, expectedResCode int) (*T, error) {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
 
 	if err != nil {
@@ -84,7 +96,7 @@ func request[T any](method string, url string, headerProtos []string, reqBody []
 
 	if err != nil {
 		return nil, err
-	} else if resp.StatusCode != 200 {
+	} else if resp.StatusCode != expectedResCode {
 		return nil, errors.New("unexpected response status code error")
 	}
 
@@ -169,14 +181,14 @@ func deleteThread(threadId string, headerProtos []string) error {
 	return nil
 }
 
-func runAssistant(threadId *string, userPrompt string, assistant assistant, headerProtos []string) (*[]byte, error) {
+func runAssistant(threadId string, userPrompt string, assistant assistant, headerProtos []string) (*[]byte, error) {
 	err := writeUserPrompt(threadId, userPrompt, headerProtos)
 
 	if err != nil {
 		return nil, err
 	}
 
-	entity, err := postRun(runProto{AssistantId: assistant.Id}, *threadId, headerProtos)
+	entity, err := postRun(runProto{AssistantId: assistant.Id}, threadId, headerProtos)
 
 	if err != nil {
 		return nil, err
@@ -184,7 +196,7 @@ func runAssistant(threadId *string, userPrompt string, assistant assistant, head
 
 	fmt.Printf("Waiting for %s assistant entity to complete...\n", assistant.Name)
 	for entity.Status != "completed" {
-		entity, err = getRun(*threadId, entity.Id, headerProtos)
+		entity, err = getRun(threadId, entity.Id, headerProtos)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +205,7 @@ func runAssistant(threadId *string, userPrompt string, assistant assistant, head
 	fmt.Printf("Completed %s assistant entity\n", assistant.Name)
 
 	var msgs *[]message
-	msgs, err = getMsgs(*threadId, headerProtos)
+	msgs, err = getMsgs(threadId, headerProtos)
 
 	if err != nil {
 		return nil, err
@@ -211,14 +223,14 @@ func runAssistant(threadId *string, userPrompt string, assistant assistant, head
 	return &bMsg, nil
 }
 
-func writeUserPrompt(threadId *string, prompt string, headerProtos []string) error {
+func writeUserPrompt(threadId string, prompt string, headerProtos []string) error {
 	msgContent, err := json.Marshal(prompt)
 
 	if err != nil {
 		return err
 	}
 
-	_, err = postMsg(messageProto{Role: "user", Content: msgContent}, *threadId, headerProtos)
+	_, err = postMsg(messageProto{Role: "user", Content: msgContent}, threadId, headerProtos)
 
 	if err != nil {
 		return err
@@ -252,17 +264,7 @@ func genOperatorUserPrompt(assistantName string, prompt []byte) string {
 		`, strings.ToLower(assistantName), prompt)
 }
 
-func improve(threadId *string, prompt []byte, targetAssistant assistant, headerProtos []string) (*[]byte, error) {
-	userPrompt := genAssistantUserPrompt(targetAssistant.Name, prompt)
-
-	msg, err := runAssistant(threadId, userPrompt, targetAssistant, headerProtos)
-
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("%s >> %s\n", targetAssistant.Name, *msg)
-
+func applySuggestions() {
 	operator := assistant{Id: "asst_qUn97Ck3zzdvNToMVAMhNzTk", Name: "Operator"}
 
 	userPrompt = genOperatorUserPrompt(operator.Name, *msg)
@@ -275,7 +277,36 @@ func improve(threadId *string, prompt []byte, targetAssistant assistant, headerP
 
 	fmt.Printf("%s >> %s\n", operator.Name, *msg)
 
-	return msg, nil
+	persistence.Update(domain.Optimization{Id: id.String(),
+		Prompt:       optimizationReqBody.Prompt,
+		Instructions: optimizationReqBody.Instructions,
+		State:        "pending",
+		ParentId:     optimizationReqBody.OptimizationParentId})
+
+}
+
+func postOptimization(headerProtos []string, optimization domain.Optimization) (*string, error) {
+	resp, err := request[domain.Optimization]("POST", "https://api.openai.com/v1/threads", headerProtos, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp.Id, nil
+}
+
+func improve(threadId string, prompt []byte, targetAssistant assistant, headerProtos []string) {
+	userPrompt := genAssistantUserPrompt(targetAssistant.Name, prompt)
+
+	msg, err := runAssistant(threadId, userPrompt, targetAssistant, headerProtos)
+
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+	}
+
+Write Operation
+
+	slog.Info(fmt.Sprintf("%s >> %s\n", targetAssistant.Name, *msg))
 }
 
 func readJSON[T any](reader io.ReadCloser) (*T, error) {
@@ -307,12 +338,26 @@ func readJSON[T any](reader io.ReadCloser) (*T, error) {
 	return t, nil
 }
 
-func chat(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	chatReqBody, err := readJSON[chatRequest](r.Body)
+func optimize(body io.ReadCloser) {
+	optimizationReqBody, err := readJSON[optimizationReq](body)
 
 	if err != nil {
-		return &ComponentResponse{Error: err, Message: "service temporarily unavailable", Code: 500}
+		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 	}
+
+	id := uuid.New()
+
+
+
+	// POST /table_name HTTP/1.1
+// { "col1": "value1", "col2": "value2" }
+
+	persistence.Write(domain.Optimization{Id: id.String(),
+		OriginalPrompt:  optimizationReqBody.OriginalPrompt,
+		OptimizedPrompt: "",
+		Instructions:    optimizationReqBody.Instructions,
+		State:           "running",
+		ParentId:        optimizationReqBody.OptimizationParentId})
 
 	headerProtos := []string{
 		"Content-Type:application/json",
@@ -330,7 +375,7 @@ func chat(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 	}()
 
 	if err != nil {
-		return &ComponentResponse{Error: err, Message: "service temporarily unavailable", Code: 500}
+		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 	}
 
 	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
@@ -338,23 +383,11 @@ func chat(w http.ResponseWriter, r *http.Request) *ComponentResponse {
 		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "Clarity"},
 		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "Consistency"}}
 
-	prompt := []byte(chatReqBody.Prompt)
 	for i := 0; i < len(assistants); i++ {
-		var tempPrompt *[]byte
-		tempPrompt, err = improve(threadId, prompt, assistants[i], headerProtos)
-
-		if err != nil {
-			return &ComponentResponse{Error: err, Message: "service temporarily unavailable", Code: 500}
-		}
-
-		prompt = *tempPrompt
+		go improve(*threadId, []byte(optimizationReqBody.OriginalPrompt), assistants[i], headerProtos)
 	}
 
 	fmt.Fprint(w, prompt)
-
-	return nil
-	// tmpl := template.Must(template.ParseFiles("./templates/index.html"))
-	// tmpl.Execute(w, nil)
 }
 
 func index(w http.ResponseWriter, r *http.Request) *ComponentResponse {
@@ -375,17 +408,8 @@ func reviewModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse
 	return &ComponentResponse{Component: components.ReviewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
-func optimize(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.Loading(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+func handleOptimizationReq(w http.ResponseWriter, r *http.Request) *ComponentResponse {
+	optimize(r.Body)
+
+	return &ComponentResponse{Component: components.Loading("foo"), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
-
-// func clicked(w http.ResponseWriter, r *http.Request) {
-// 	tmpl := template.Must(template.ParseFiles("./templates/fragments/button.html"))
-// 	tmpl.Execute(w, nil)
-// }
-
-// func team(w http.ResponseWriter, r *http.Request) {
-// 	tmpl := template.Must(template.ParseFiles("./templates/fragments/button.html"))
-// 	tmpl.Execute(w, nil)
-
-// }
