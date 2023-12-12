@@ -26,6 +26,7 @@ type RunRepo interface {
 
 type SuggestionRepo interface {
 	Insert(suggestions []domain.Suggestion) error
+	Updata(id string, userFeedback string) error
 }
 
 type OAIRepo interface {

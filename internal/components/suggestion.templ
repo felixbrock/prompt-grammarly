@@ -1,25 +1,32 @@
 package components
 
-templ suggestionCardField() {
+type suggestion struct {
+	Suggestion string
+	Reasoning  string
+	Target     string
+	Type       string
+}
+
+templ suggestionCardField(title string, text string) {
 	<div class="text-left leading-tight px-2 py-2">
-		<h3 class=" text-gray-500 ">Reasoning</h3>
-		<p class="text-sm text-gray-700">Since lorem ipsum lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum</p>
+		<h3 class=" text-gray-500 ">{ title }</h3>
+		<p class="text-sm text-gray-700">{ text }</p>
 	</div>
 }
 
-templ SuggestionCard() {
+templ SuggestionCard(sugg suggestion) {
 	<li class="overflow-hidden grow shrink-0 min-h-max w-full my-2 rounded-xl border border-gray-200 divide-y divide-gray-100">
 		<div class="text-left leading-tight ">
 			<div class="flex flex-row items-center p-2 gap-2 bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500">
-				<h3 class="grow text-gray-900 text-left font-bold ">Clarity Suggestion</h3>
+				<h3 class="grow text-gray-900 text-left font-bold ">{ sugg.Type + "Suggestion" }</h3>
 				<button type="button" class="relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold  shadow-sm hover:bg-green-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" hx-get="/" hx-trigger="click" hx-target="#">Double Down</button>
 				<button type="button" class="relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold  shadow-sm hover:bg-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" hx-get="/" hx-trigger="click" hx-target="#">Reject</button>
 			</div>
-			<p class="text-sm p-2">Since lorem ipsum lorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsumlorem ipsum</p>
+			<p class="text-sm p-2">{ sugg.Suggestion }</p>
 		</div>
 		<dl>
-			@suggestionCardField()
-			@suggestionCardField()
+			@suggestionCardField("Reasoning", sugg.Reasoning)
+			@suggestionCardField("Target", sugg.Target)
 		</dl>
 	</li>
 }

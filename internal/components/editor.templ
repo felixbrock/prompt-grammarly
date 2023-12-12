@@ -28,7 +28,7 @@ templ sectionWrapper(title string) {
 	</section>
 }
 
-templ editorWindow(title string, enabled bool) {
+templ editorWindow(title string, prompt string, enabled bool) {
 	@sectionWrapper(title) {
 		<div class="h-full flex flex-col">
 			<div class="h-6">
@@ -39,7 +39,7 @@ templ editorWindow(title string, enabled bool) {
 				</div>
 			</div>
 			<div class="grow mt-2">
-				@TextField(enabled)
+				@TextField(prompt, enabled)
 			</div>
 		</div>
 	}
@@ -47,36 +47,32 @@ templ editorWindow(title string, enabled bool) {
 
 templ DraftModeEditor() {
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("Custom Optimization Goal",true)
+		@editorWindow("Custom Optimization Goal", "", true)
 	</div>
 	<div class="h-15/20 pb-4">
-		@editorWindow("Your Prompt",true)
+		@editorWindow("Your Prompt", "", true)
 	</div>
 	<div class="h-2/20 pb-4">
 		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimize", Method: "POST", Target: "#editor"}}})
 	</div>
 }
 
-templ EditModeEditor() {
+templ EditModeEditor(original string, optimized string, instructions string, suggestions []suggestion) {
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("Custom Optimization Goal",true)
+		@editorWindow("Custom Optimization Instructions", instructions,  true)
 	</div>
 	<div class="h-7/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("Your Prompt",true)
-		@editorWindow("Optimized Prompt",false)
+		@editorWindow("Your Prompt", original, true)
+		@editorWindow("Optimized Prompt", optimized, false)
 	</div>
 	<div class="h-8/20 pb-4">
 		@sectionWrapper("Suggestions") {
 			<ul class="px-2 h-full flex flex-col flex-nowrap gap-4 overflow-y-auto overflow-x-hidden">
-				@SuggestionCard()
-				@SuggestionCard()
-				@SuggestionCard()
-				@SuggestionCard()
-				@SuggestionCard()
-				@SuggestionCard()
-				@SuggestionCard()
+				for i := 0; i < len(suggestions); i++ {
+					@SuggestionCard(suggestions[i])
+				}
 			</ul>
 		}
 	</div>
@@ -85,10 +81,10 @@ templ EditModeEditor() {
 	</div>
 }
 
-templ ReviewModeEditor() {
+templ ReviewModeEditor(original string, optimized string) {
 	<div class="h-9/10 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("Your Prompt",true)
-		@editorWindow("Optimized Prompt",false)
+		@editorWindow("Your Prompt",original, true)
+		@editorWindow("Optimized Prompt",optimized, false)
 	</div>
 	<div class="h-1/10 pb-4">
 		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{Endpoint: "/editor/edit", Method: "POST", Target: "#editor"}}})

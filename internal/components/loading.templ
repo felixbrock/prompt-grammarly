@@ -33,7 +33,7 @@ templ optimizationStateMsg() {
 }
 
 templ Loading(optimizationId string, analysisState AnalysisState) {
-	<div class="flex items-center justify-center h-full w-full" hx-get={ "optimizations/" + optimizationId + "/state" } hx-trigger="every 2s">
+	<div class="flex items-center justify-center h-full w-full" hx-get={ "optimizations?id=" + optimizationId } hx-swap="outerHTML" hx-trigger="every 2s">
 		<div class="flex flex-col items-center gap-2">
 			<img class="animate-pulse" src="/static/images/lemonai-2x.png"/>
 			@analysisStateMsg("Custom Instructions", analysisState.CustomInstructions)
