@@ -17,10 +17,10 @@ type Run struct {
 }
 
 type Optimization struct {
-	Id              string
-	OriginalPrompt  string
-	OptimizedPrompt string
-	Instructions    string
-	State           string
-	ParentId        string
+	Id              string `json:"id"`
+	OriginalPrompt  string `json:"original_prompt"`
+	OptimizedPrompt string `json:"optimized_prompt"`
+	Instructions    string `json:"instructions"`
+	State           string `json:"state"`
+	ParentId        string `json:"parent_id"`
 }

@@ -13,7 +13,6 @@ import (
 
 	"github.com/felixbrock/lemonai/internal/components"
 	"github.com/felixbrock/lemonai/internal/domain"
-	"github.com/felixbrock/lemonai/internal/persistence"
 	"github.com/google/uuid"
 )
 
@@ -64,9 +63,9 @@ type assistant struct {
 }
 
 type optimizationReq struct {
-	OriginalPrompt       string `json:"originalPrompt"`
-	Instructions         string `json:"instructions"`
-	OptimizationParentId string `json:"optimizationParentId"`
+	OriginalPrompt string `json:"originalPrompt"`
+	Instructions   string `json:"instructions"`
+	ParentId       string `json:"parentId"`
 }
 
 type editorReq struct {
@@ -74,13 +73,32 @@ type editorReq struct {
 }
 
 type reqConfig struct {
-	Method string
-	Url string
+	Method       string
+	Url          string
 	HeaderProtos []string
-	Body []byte
+	Body         []byte
 }
 
-func request[T any](config reqConfig, expectedResCode int) (*T, error) {
+type suggestion struct {
+	Suggestion string `json:"suggestion"`
+	Reasoning  string `json:"reasoning"`
+	Target     string `json:"original"`
+}
+
+type OptimimizationRepo interface {
+	Insert(optimization domain.Optimization) error
+}
+
+type RunRepo interface {
+	Insert(run domain.Run) error
+	Update(id string, state string) error
+}
+
+type SuggestionRepo interface {
+	Insert(suggestion []domain.Suggestion) error
+}
+
+func request[T any](config reqConfig, expectedResCode int) (T, error) {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
 
 	if err != nil {
@@ -113,7 +131,7 @@ func request[T any](config reqConfig, expectedResCode int) (*T, error) {
 func getRun(threadId string, runId string, headerProtos []string) (*run, error) {
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs/%s", threadId, runId)
 
-	entity, err := request[run]("GET", url, headerProtos, nil)
+	entity, err := request[run](reqConfig{"GET", url, headerProtos, nil}, 200)
 
 	if err != nil {
 		return nil, err
@@ -126,7 +144,7 @@ func postRun(proto runProto, threadId string, headerProtos []string) (*run, erro
 	body := []byte(fmt.Sprintf(`{"assistant_id": "%s"}`, proto.AssistantId))
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs", threadId)
 
-	entity, err := request[run]("POST", url, headerProtos, body)
+	entity, err := request[run](reqConfig{"POST", url, headerProtos, body}, 200)
 
 	if err != nil {
 		return nil, err
@@ -138,7 +156,7 @@ func postRun(proto runProto, threadId string, headerProtos []string) (*run, erro
 func getMsgs(threadId string, headerProtos []string) (*[]message, error) {
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
 
-	msgs, err := request[messageListing]("GET", url, headerProtos, nil)
+	msgs, err := request[messageListing](reqConfig{"GET", url, headerProtos, nil}, 200)
 
 	if err != nil {
 		return nil, err
@@ -151,7 +169,7 @@ func postMsg(proto messageProto, threadId string, headerProtos []string) (*strin
 	body := []byte(fmt.Sprintf(`{"role": "%s", "content": %s}`, proto.Role, proto.Content))
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
 
-	msg, err := request[message]("POST", url, headerProtos, body)
+	msg, err := request[message](reqConfig{"POST", url, headerProtos, body}, 200)
 
 	if err != nil {
 		return nil, err
@@ -161,7 +179,7 @@ func postMsg(proto messageProto, threadId string, headerProtos []string) (*strin
 }
 
 func postThread(headerProtos []string) (*string, error) {
-	resp, err := request[thread]("POST", "https://api.openai.com/v1/threads", headerProtos, nil)
+	resp, err := request[thread](reqConfig{"POST", "https://api.openai.creqConfigom/v1/threads", headerProtos, nil}, 200)
 
 	if err != nil {
 		return nil, err
@@ -172,7 +190,7 @@ func postThread(headerProtos []string) (*string, error) {
 
 func deleteThread(threadId string, headerProtos []string) error {
 	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s`, threadId)
-	_, err := request[thread]("DELETE", url, headerProtos, nil)
+	_, err := request[thread](reqConfig{"DELETE", url, headerProtos, nil}, 200)
 
 	if err != nil {
 		return err
@@ -194,7 +212,7 @@ func runAssistant(threadId string, userPrompt string, assistant assistant, heade
 		return nil, err
 	}
 
-	fmt.Printf("Waiting for %s assistant entity to complete...\n", assistant.Name)
+	fmt.Printf("waiting for %s assistant entity to complete...\n", assistant.Name)
 	for entity.Status != "completed" {
 		entity, err = getRun(threadId, entity.Id, headerProtos)
 		if err != nil {
@@ -202,7 +220,7 @@ func runAssistant(threadId string, userPrompt string, assistant assistant, heade
 		}
 		time.Sleep(1000)
 	}
-	fmt.Printf("Completed %s assistant entity\n", assistant.Name)
+	fmt.Printf("completed %s assistant entity\n", assistant.Name)
 
 	var msgs *[]message
 	msgs, err = getMsgs(threadId, headerProtos)
@@ -285,17 +303,56 @@ func applySuggestions() {
 
 }
 
-func postOptimization(headerProtos []string, optimization domain.Optimization) (*string, error) {
-	resp, err := request[domain.Optimization]("POST", "https://api.openai.com/v1/threads", headerProtos, nil)
+func insertOptimization(optimization domain.Optimization) (string, error) {
+	apiKey := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsbGV2bHJva2lnd3ZiYm5iZml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDIyOTY5OTYsImV4cCI6MjAxNzg3Mjk5Nn0.xlOS-PwHf2vX3pULG6UtA0OZQqiyt8A3PyGTxz2LZoA"
+	headerProtos := []string{
+		fmt.Sprintf("apikey: %s", apiKey),
+		fmt.Sprintf("Authorization: Bearer %s", apiKey)}
+
+	body, err := json.Marshal(optimization)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &resp.Id, nil
+	resp, err := request[domain.Optimization](reqConfig{"POST", "https://cllevlrokigwvbbnbfiu.supabase.co/rest/v1/optimization", headerProtos, body}, 201)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Id, nil
 }
 
 func improve(threadId string, prompt []byte, targetAssistant assistant, headerProtos []string) {
+	runId := uuid.New().String()
+	run := domain.Run{
+		Id:             runId,
+		Type:           targetAssistant.Name,
+		State:          "running",
+		OptimizationId: optimizationId}
+
+	err := RunRepo.Insert(run)
+
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+	}
+
+	defer func() {
+		if err == nil {
+			err = RunRepo.Update(runId, "completed")
+			if err != nil {
+				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+			}
+		} else {
+			err = RunRepo.Update(runId, "failed")
+			if err != nil {
+				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+			}
+		}
+
+	}()
+
 	userPrompt := genAssistantUserPrompt(targetAssistant.Name, prompt)
 
 	msg, err := runAssistant(threadId, userPrompt, targetAssistant, headerProtos)
@@ -304,12 +361,41 @@ func improve(threadId string, prompt []byte, targetAssistant assistant, headerPr
 		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 	}
 
-Write Operation
+	var suggestions []suggestion
+	suggestions, err = readJSON[[]suggestion](bytes.NewBuffer(*msg))
+
+	suggestionRecords := make([]domain.Suggestion, len(suggestions))
+	for i := 0; i < len(suggestions); i++ {
+		suggestionRecords[i] = domain.Suggestion{
+			Id:           uuid.New().String(),
+			Suggestion:   suggestions[i].Suggestion,
+			Reasoning:    suggestions[i].Reasoning,
+			UserFeedback: 0,
+			Target:       suggestions[i].Target,
+			RunId:        runId}
+	}
+
+	err = SuggestionRepo.Insert(suggestion)
+
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+	}
 
 	slog.Info(fmt.Sprintf("%s >> %s\n", targetAssistant.Name, *msg))
 }
 
-func readJSON[T any](reader io.ReadCloser) (*T, error) {
+func readJSON[T any](content []byte) (*T, error) {
+	var t *T
+	err := json.Unmarshal(content, &t)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}
+
+func read(reader io.ReadCloser) ([]byte, error) {
 	var err error
 
 	defer func() {
@@ -328,36 +414,38 @@ func readJSON[T any](reader io.ReadCloser) (*T, error) {
 		return nil, errors.New("no reader content error")
 	}
 
-	var t *T
-	err = json.Unmarshal(content, &t)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return t, nil
+	return content, nil
 }
 
-func optimize(body io.ReadCloser) {
-	optimizationReqBody, err := readJSON[optimizationReq](body)
+func optimize(body io.ReadCloser) error {
+	bbody, err := read(body)
 
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+		return err
 	}
 
-	id := uuid.New()
+	optimizationReqBody, err := readJSON[optimizationReq](bbody)
 
+	if err != nil {
+		return err
+	}
 
+	apiKey := os.getEnv("SUPABASE_API_KEY")
+	headerProtos := []string{
+		fmt.Sprintf("apikey: %s", apiKey),
+		fmt.Sprintf("Authorization: Bearer %s", apiKey)}
 
-	// POST /table_name HTTP/1.1
-// { "col1": "value1", "col2": "value2" }
+	optimizationId := uuid.New().String()
 
-	persistence.Write(domain.Optimization{Id: id.String(),
+	optimization := domain.Optimization{
+		Id:              optimizationId,
 		OriginalPrompt:  optimizationReqBody.OriginalPrompt,
-		OptimizedPrompt: "",
 		Instructions:    optimizationReqBody.Instructions,
-		State:           "running",
-		ParentId:        optimizationReqBody.OptimizationParentId})
+		ParentId:        optimizationReqBody.ParentId,
+		OptimizedPrompt: "",
+		State:           "pending"}
+
+	_, err := insertOptimization(optimization)
 
 	headerProtos := []string{
 		"Content-Type:application/json",
@@ -375,7 +463,7 @@ func optimize(body io.ReadCloser) {
 	}()
 
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+		return err
 	}
 
 	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
@@ -409,7 +497,7 @@ func reviewModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse
 }
 
 func handleOptimizationReq(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	optimize(r.Body)
+	err := optimize(r.Body)
 
 	return &ComponentResponse{Component: components.Loading("foo"), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
