@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/felixbrock/lemonai/internal/components"
@@ -16,44 +16,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type Response struct {
-	Body       []byte
-	StatusCode int
-}
-
-type runProto struct {
-	AssistantId string
-}
-
-type run struct {
-	Id     string `json:"id"`
-	Status string `json:"status"`
-}
-
-type messageProto struct {
+type MessageProto struct {
 	Role    string
 	Content []byte
 }
 
-type messageContentText struct {
-	Value string `json:"value"`
-}
-
-type messageContent struct {
-	Text messageContentText `json:"text"`
-}
-
-type message struct {
-	Id      string           `json:"id"`
-	Content []messageContent `json:"content"`
-	Role    string           `json:"role"`
-}
-
-type messageListing struct {
-	Data []message `json:"data"`
-}
-
-type thread struct {
+type OAIThread struct {
 	Id string `json:"id"`
 }
 
@@ -72,141 +40,42 @@ type editorReq struct {
 	EditorName string `json:"editorName"`
 }
 
-type reqConfig struct {
-	Method       string
-	Url          string
-	HeaderProtos []string
-	Body         []byte
-}
-
 type suggestion struct {
 	Suggestion string `json:"suggestion"`
 	Reasoning  string `json:"reasoning"`
 	Target     string `json:"original"`
 }
 
-type OptimimizationRepo interface {
-	Insert(optimization domain.Optimization) error
+type OAIRun struct {
+	Id     string `json:"id"`
+	Status string `json:"status"`
 }
 
-type RunRepo interface {
-	Insert(run domain.Run) error
-	Update(id string, state string) error
+type messageContentText struct {
+	Value string `json:"value"`
 }
 
-type SuggestionRepo interface {
-	Insert(suggestion []domain.Suggestion) error
+type messageContent struct {
+	Text messageContentText `json:"text"`
 }
 
-func request[T any](config reqConfig, expectedResCode int) (T, error) {
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
+type OAIMessage struct {
+	Content []messageContent `json:"content"`
+	Role    string           `json:"role"`
+}
+
+type OAIMessageListing struct {
+	Data []OAIMessage `json:"data"`
+}
+
+func (c OptimizationController) runAssistant(threadId string, userPrompt string, assistant assistant) (*[]byte, error) {
+	err := c.writeUserPrompt(threadId, userPrompt)
 
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < len(headerProtos); i++ {
-		headerKV := strings.Split(headerProtos[i], ":")
-		req.Header.Add(headerKV[0], headerKV[1])
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-
-	if err != nil {
-		return nil, err
-	} else if resp.StatusCode != expectedResCode {
-		return nil, errors.New("unexpected response status code error")
-	}
-
-	var t *T
-	t, err = readJSON[T](resp.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return t, nil
-}
-
-func getRun(threadId string, runId string, headerProtos []string) (*run, error) {
-	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs/%s", threadId, runId)
-
-	entity, err := request[run](reqConfig{"GET", url, headerProtos, nil}, 200)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return entity, nil
-}
-
-func postRun(proto runProto, threadId string, headerProtos []string) (*run, error) {
-	body := []byte(fmt.Sprintf(`{"assistant_id": "%s"}`, proto.AssistantId))
-	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs", threadId)
-
-	entity, err := request[run](reqConfig{"POST", url, headerProtos, body}, 200)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return entity, nil
-}
-
-func getMsgs(threadId string, headerProtos []string) (*[]message, error) {
-	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
-
-	msgs, err := request[messageListing](reqConfig{"GET", url, headerProtos, nil}, 200)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &msgs.Data, nil
-}
-
-func postMsg(proto messageProto, threadId string, headerProtos []string) (*string, error) {
-	body := []byte(fmt.Sprintf(`{"role": "%s", "content": %s}`, proto.Role, proto.Content))
-	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
-
-	msg, err := request[message](reqConfig{"POST", url, headerProtos, body}, 200)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &msg.Id, nil
-}
-
-func postThread(headerProtos []string) (*string, error) {
-	resp, err := request[thread](reqConfig{"POST", "https://api.openai.creqConfigom/v1/threads", headerProtos, nil}, 200)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &resp.Id, nil
-}
-
-func deleteThread(threadId string, headerProtos []string) error {
-	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s`, threadId)
-	_, err := request[thread](reqConfig{"DELETE", url, headerProtos, nil}, 200)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func runAssistant(threadId string, userPrompt string, assistant assistant, headerProtos []string) (*[]byte, error) {
-	err := writeUserPrompt(threadId, userPrompt, headerProtos)
-
-	if err != nil {
-		return nil, err
-	}
-
-	entity, err := postRun(runProto{AssistantId: assistant.Id}, threadId, headerProtos)
+	entity, err := c.App.OAIRepo.postRun(assistant.Id, threadId)
 
 	if err != nil {
 		return nil, err
@@ -214,7 +83,7 @@ func runAssistant(threadId string, userPrompt string, assistant assistant, heade
 
 	fmt.Printf("waiting for %s assistant entity to complete...\n", assistant.Name)
 	for entity.Status != "completed" {
-		entity, err = getRun(threadId, entity.Id, headerProtos)
+		entity, err = c.App.OAIRepo.getRun(threadId, entity.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -222,8 +91,8 @@ func runAssistant(threadId string, userPrompt string, assistant assistant, heade
 	}
 	fmt.Printf("completed %s assistant entity\n", assistant.Name)
 
-	var msgs *[]message
-	msgs, err = getMsgs(threadId, headerProtos)
+	var msgs *[]OAIMessage
+	msgs, err = c.App.OAIRepo.getMsgs(threadId)
 
 	if err != nil {
 		return nil, err
@@ -241,14 +110,14 @@ func runAssistant(threadId string, userPrompt string, assistant assistant, heade
 	return &bMsg, nil
 }
 
-func writeUserPrompt(threadId string, prompt string, headerProtos []string) error {
+func (c OptimizationController) writeUserPrompt(threadId string, prompt string) error {
 	msgContent, err := json.Marshal(prompt)
 
 	if err != nil {
 		return err
 	}
 
-	_, err = postMsg(messageProto{Role: "user", Content: msgContent}, threadId, headerProtos)
+	err = c.App.OAIRepo.postMsg(MessageProto{Role: "user", Content: msgContent}, threadId)
 
 	if err != nil {
 		return err
@@ -257,7 +126,7 @@ func writeUserPrompt(threadId string, prompt string, headerProtos []string) erro
 	return nil
 }
 
-func genAssistantUserPrompt(assistantName string, prompt []byte) string {
+func (c OptimizationController) genAssistantUserPrompt(assistantName string, prompt []byte) string {
 	return fmt.Sprintf(
 		`Evaluate the %s of the following model instruction:
 
@@ -266,7 +135,7 @@ func genAssistantUserPrompt(assistantName string, prompt []byte) string {
 		`, strings.ToLower(assistantName), prompt)
 }
 
-func genOperatorUserPrompt(assistantName string, prompt []byte) string {
+func (c OptimizationController) genOperatorUserPrompt(assistantName string, msg []byte) string {
 	return fmt.Sprintf(
 		`Apply the following list of suggestions to improve contextual richness to the following model instructions.
 
@@ -279,15 +148,15 @@ func genOperatorUserPrompt(assistantName string, prompt []byte) string {
 
 		%s
 
-		`, strings.ToLower(assistantName), prompt)
+		`, strings.ToLower(assistantName), msg)
 }
 
-func applySuggestions() {
+func (c OptimizationController) applySuggestions(optimizationId string, threadId string, suggestions []byte) ([]byte, error) {
 	operator := assistant{Id: "asst_qUn97Ck3zzdvNToMVAMhNzTk", Name: "Operator"}
 
-	userPrompt = genOperatorUserPrompt(operator.Name, *msg)
+	userPrompt := c.genOperatorUserPrompt(operator.Name, suggestions)
 
-	msg, err = runAssistant(threadId, userPrompt, operator, headerProtos)
+	msg, err := c.runAssistant(threadId, userPrompt, operator)
 
 	if err != nil {
 		return nil, err
@@ -295,36 +164,10 @@ func applySuggestions() {
 
 	fmt.Printf("%s >> %s\n", operator.Name, *msg)
 
-	persistence.Update(domain.Optimization{Id: id.String(),
-		Prompt:       optimizationReqBody.Prompt,
-		Instructions: optimizationReqBody.Instructions,
-		State:        "pending",
-		ParentId:     optimizationReqBody.OptimizationParentId})
-
+	return *msg, nil
 }
 
-func insertOptimization(optimization domain.Optimization) (string, error) {
-	apiKey := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsbGV2bHJva2lnd3ZiYm5iZml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDIyOTY5OTYsImV4cCI6MjAxNzg3Mjk5Nn0.xlOS-PwHf2vX3pULG6UtA0OZQqiyt8A3PyGTxz2LZoA"
-	headerProtos := []string{
-		fmt.Sprintf("apikey: %s", apiKey),
-		fmt.Sprintf("Authorization: Bearer %s", apiKey)}
-
-	body, err := json.Marshal(optimization)
-
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := request[domain.Optimization](reqConfig{"POST", "https://cllevlrokigwvbbnbfiu.supabase.co/rest/v1/optimization", headerProtos, body}, 201)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Id, nil
-}
-
-func improve(threadId string, prompt []byte, targetAssistant assistant, headerProtos []string) {
+func (c OptimizationController) suggest(optimizationId string, threadId string, prompt []byte, targetAssistant assistant) ([]suggestion, error) {
 	runId := uuid.New().String()
 	run := domain.Run{
 		Id:             runId,
@@ -332,20 +175,20 @@ func improve(threadId string, prompt []byte, targetAssistant assistant, headerPr
 		State:          "running",
 		OptimizationId: optimizationId}
 
-	err := RunRepo.Insert(run)
+	err := c.App.RunRepo.Insert(run)
 
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+		return nil, err
 	}
 
 	defer func() {
 		if err == nil {
-			err = RunRepo.Update(runId, "completed")
+			err = c.App.RunRepo.Update(runId, "completed")
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 			}
 		} else {
-			err = RunRepo.Update(runId, "failed")
+			err = c.App.RunRepo.Update(runId, "failed")
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 			}
@@ -353,87 +196,94 @@ func improve(threadId string, prompt []byte, targetAssistant assistant, headerPr
 
 	}()
 
-	userPrompt := genAssistantUserPrompt(targetAssistant.Name, prompt)
+	userPrompt := c.genAssistantUserPrompt(targetAssistant.Name, prompt)
 
-	msg, err := runAssistant(threadId, userPrompt, targetAssistant, headerProtos)
+	msg, err := c.runAssistant(threadId, userPrompt, targetAssistant)
 
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+		return nil, err
 	}
 
-	var suggestions []suggestion
-	suggestions, err = readJSON[[]suggestion](bytes.NewBuffer(*msg))
+	var suggestions *[]suggestion
+	suggestions, err = ReadJSON[[]suggestion](*msg)
 
-	suggestionRecords := make([]domain.Suggestion, len(suggestions))
-	for i := 0; i < len(suggestions); i++ {
+	suggestionRecords := make([]domain.Suggestion, len(*suggestions))
+	for i := 0; i < len(*suggestions); i++ {
 		suggestionRecords[i] = domain.Suggestion{
 			Id:           uuid.New().String(),
-			Suggestion:   suggestions[i].Suggestion,
-			Reasoning:    suggestions[i].Reasoning,
+			Suggestion:   (*suggestions)[i].Suggestion,
+			Reasoning:    (*suggestions)[i].Reasoning,
 			UserFeedback: 0,
-			Target:       suggestions[i].Target,
+			Target:       (*suggestions)[i].Target,
 			RunId:        runId}
 	}
 
-	err = SuggestionRepo.Insert(suggestion)
-
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
-	}
-
-	slog.Info(fmt.Sprintf("%s >> %s\n", targetAssistant.Name, *msg))
-}
-
-func readJSON[T any](content []byte) (*T, error) {
-	var t *T
-	err := json.Unmarshal(content, &t)
+	err = c.App.SuggestionRepo.Insert(suggestionRecords)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return t, nil
+	slog.Info(fmt.Sprintf("Successfully generated %s suggestions", targetAssistant.Name))
+
+	return *suggestions, nil
 }
 
-func read(reader io.ReadCloser) ([]byte, error) {
-	var err error
+func (c OptimizationController) optimize(optimizationId string, threadId string, originalPrompt []byte) {
+	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
+		{Id: "asst_3q6LvmiPZyoPChdrcuqMxOvh", Name: "Conciseness"},
+		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "Clarity"},
+		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "Consistency"},
+		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "Custom"}}
+	}
 
-	defer func() {
-		err = reader.Close()
-		if err != nil {
-			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
-		}
+	var wg sync.WaitGroup
+	outputCh := make(chan int)
+
+	goroutines := xxxx
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			c.suggest(optimizationId, threadId, []byte(optimizationReqBody.OriginalPrompt), assistants[i])
+			outputCh <- output
+		}(i)
+	}
+
+	go func() {
+		wg.Wait()
+		close(outputCh)
 	}()
 
-	var content []byte
-	content, err = io.ReadAll(reader)
-
-	if err != nil {
-		return nil, err
-	} else if len(content) == 0 {
-		return nil, errors.New("no reader content error")
+	var results []int
+	for {
+		output, ok := <-outputCh
+		if !ok {
+			break // Break the loop if the channel is closed
+		}
+		results = append(results, output)
 	}
 
-	return content, nil
+	fmt.Println("Results:", results)
+
+	go c.apply(optimizationId, threadId, []byte(optimizationReqBody.OriginalPrompt), assistants[i])
+
+	c.App.OptimimizationRepo.Update(optimizationId, "completed", *msg)
 }
 
-func optimize(body io.ReadCloser) error {
-	bbody, err := read(body)
+func (c OptimizationController) run(body io.ReadCloser) error {
+	bbody, err := Read(body)
 
 	if err != nil {
 		return err
 	}
 
-	optimizationReqBody, err := readJSON[optimizationReq](bbody)
+	optimizationReqBody, err := ReadJSON[optimizationReq](bbody)
 
 	if err != nil {
 		return err
 	}
-
-	apiKey := os.getEnv("SUPABASE_API_KEY")
-	headerProtos := []string{
-		fmt.Sprintf("apikey: %s", apiKey),
-		fmt.Sprintf("Authorization: Bearer %s", apiKey)}
 
 	optimizationId := uuid.New().String()
 
@@ -445,18 +295,16 @@ func optimize(body io.ReadCloser) error {
 		OptimizedPrompt: "",
 		State:           "pending"}
 
-	_, err := insertOptimization(optimization)
+	err = c.App.OptimimizationRepo.Insert(optimization)
 
-	headerProtos := []string{
-		"Content-Type:application/json",
-		"Authorization:Bearer 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",
-		"OpenAI-Beta:assistants=v1",
+	if err != nil {
+		return err
 	}
 
-	threadId, err := postThread(headerProtos)
+	threadId, err := c.App.OAIRepo.postThread()
 
 	defer func() {
-		err = deleteThread(*threadId, headerProtos)
+		err = c.App.OAIRepo.deleteThread(threadId)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 		}
@@ -466,38 +314,52 @@ func optimize(body io.ReadCloser) error {
 		return err
 	}
 
-	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
-		{Id: "asst_3q6LvmiPZyoPChdrcuqMxOvh", Name: "Conciseness"},
-		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "Clarity"},
-		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "Consistency"}}
-
-	for i := 0; i < len(assistants); i++ {
-		go improve(*threadId, []byte(optimizationReqBody.OriginalPrompt), assistants[i], headerProtos)
-	}
+	go c.optimize(optimizationId, threadId, []byte(optimizationReqBody.OriginalPrompt), assistants[i], headerProtos)
 
 	fmt.Fprint(w, prompt)
 }
 
-func index(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.Index(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+type IndexController struct {
 }
 
-func app(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.App(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+func (c IndexController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	return &AppResp{Component: components.Index(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }
 
-func draftModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.DraftModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
-}
-func editModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.EditModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
-}
-func reviewModeEditor(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	return &ComponentResponse{Component: components.ReviewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+type AppController struct {
 }
 
-func handleOptimizationReq(w http.ResponseWriter, r *http.Request) *ComponentResponse {
-	err := optimize(r.Body)
+func (c AppController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	return &AppResp{Component: components.App(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
 
-	return &ComponentResponse{Component: components.Loading("foo"), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+type DraftModeEditorController struct {
+}
+
+func (c DraftModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	return &AppResp{Component: components.DraftModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
+
+type EditModeEditorController struct {
+}
+
+func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	return &AppResp{Component: components.EditModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
+
+type ReviewModeEditorController struct {
+}
+
+func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	return &AppResp{Component: components.ReviewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+}
+
+type OptimizationController struct {
+	App *App
+}
+
+func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	err := c.optimize(r.Body)
+
+	return &AppResp{Component: components.Loading("foo"), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 }

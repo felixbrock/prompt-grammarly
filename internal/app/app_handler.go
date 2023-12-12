@@ -12,7 +12,7 @@ type component interface {
 	Render(ctx context.Context, w io.Writer) error
 }
 
-type ComponentResponse struct {
+type AppResp struct {
 	Error       error
 	Message     string
 	Code        int
@@ -20,10 +20,16 @@ type ComponentResponse struct {
 	Component   component
 }
 
-type ComponentHandler func(http.ResponseWriter, *http.Request) *ComponentResponse
+type Controller interface {
+	Handle(http.ResponseWriter, *http.Request) *AppResp
+}
 
-func (ch ComponentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	resp := ch(w, r)
+type AppHandler struct {
+	c Controller
+}
+
+func (h AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	resp := h.c.Handle(w, r)
 
 	if resp.Error != nil {
 		slog.Error(fmt.Sprintf(`Error occured: %s`, resp.Error.Error()))

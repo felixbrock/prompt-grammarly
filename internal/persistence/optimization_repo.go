@@ -3,26 +3,25 @@ package persistence
 import (
 	"encoding/json"
 
-	domain "github.com/felixbrock/lemonai/internal/domain-xx"
+	"github.com/felixbrock/lemonai/internal/domain"
 )
 
 type OptimizationRepo struct {
-	ApiKey       string
-	HeaderProtos []string
+	BaseHeaders []string
 }
 
-func (r OptimizationRepo) Insert(optimization domain.Optimization) (id string, err error) {
+func (r OptimizationRepo) Insert(optimization domain.Optimization) error {
 	body, err := json.Marshal(optimization)
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	resp, err := request[domain.Optimization](reqConfig{"POST", "https://cllevlrokigwvbbnbfiu.supabase.co/rest/v1/optimization", headerProtos, body}, 201)
+	_, err = request[domain.Optimization](reqConfig{Method: "POST", Url: "https://cllevlrokigwvbbnbfiu.supabase.co/rest/v1/optimization", Body: body, Headers: r.BaseHeaders}, 201)
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return resp.Id, nil
+	return nil
 }
