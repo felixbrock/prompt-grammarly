@@ -36,10 +36,6 @@ type optimizationReq struct {
 	ParentId       string `json:"parentId"`
 }
 
-type editorReq struct {
-	EditorName string `json:"editorName"`
-}
-
 type oaiSuggestion struct {
 	Suggestion string `json:"suggestion"`
 	Reasoning  string `json:"reasoning"`
@@ -87,7 +83,7 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 		return nil, err
 	}
 
-	entity, err := c.App.OAIRepo.postRun(assistant.Id, threadId)
+	entity, err := c.Repo.OAIRepo.PostRun(assistant.Id, threadId)
 
 	if err != nil {
 		return nil, err
@@ -95,7 +91,7 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 
 	fmt.Printf("waiting for %s assistant entity to complete...\n", assistant.Name)
 	for entity.Status != "completed" {
-		entity, err = c.App.OAIRepo.getRun(threadId, entity.Id)
+		entity, err = c.Repo.OAIRepo.GetRun(threadId, entity.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +100,7 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 	fmt.Printf("completed %s assistant entity\n", assistant.Name)
 
 	var msgs *[]OAIMessage
-	msgs, err = c.App.OAIRepo.getMsgs(threadId)
+	msgs, err = c.Repo.OAIRepo.GetMsgs(threadId)
 
 	if err != nil {
 		return nil, err
@@ -129,7 +125,7 @@ func (c OptimizationController) writeUserPrompt(threadId string, prompt string) 
 		return err
 	}
 
-	err = c.App.OAIRepo.postMsg(MessageProto{Role: "user", Content: msgContent}, threadId)
+	err = c.Repo.OAIRepo.PostMsg(MessageProto{Role: "user", Content: msgContent}, threadId)
 
 	if err != nil {
 		return err
@@ -214,7 +210,7 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 		State:          "running",
 		OptimizationId: optimizationId}
 
-	err := c.App.RunRepo.Insert(run)
+	err := c.Repo.RunRepo.Insert(run)
 
 	if err != nil {
 		return nil, err
@@ -222,12 +218,12 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 
 	defer func() {
 		if err == nil {
-			err = c.App.RunRepo.Update(runId, "completed")
+			err = c.Repo.RunRepo.Update(runId, "completed")
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 			}
 		} else {
-			err = c.App.RunRepo.Update(runId, "failed")
+			err = c.Repo.RunRepo.Update(runId, "failed")
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 			}
@@ -269,7 +265,7 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 			OptimizationId: optimizationId}
 	}
 
-	err = c.App.SuggestionRepo.Insert(suggestionRecords)
+	err = c.Repo.SuggestionRepo.Insert(suggestionRecords)
 
 	if err != nil {
 		return nil, err
@@ -294,7 +290,7 @@ func (c OptimizationController) optimize(optimizationId string, threadId string,
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			suggestions, err := c.suggest(optimizationId, threadId, base, assistants[i])
+			suggestions, err := c.suggest(optimizationId, threadId, base, assistants[id])
 
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -328,7 +324,7 @@ func (c OptimizationController) optimize(optimizationId string, threadId string,
 		return
 	}
 
-	c.App.OptimimizationRepo.Update(optimizationId, "completed", msg)
+	c.Repo.OptimizationRepo.Update(optimizationId, "completed", msg)
 }
 
 func (c OptimizationController) run(optimizationId string, body io.ReadCloser) {
@@ -354,17 +350,17 @@ func (c OptimizationController) run(optimizationId string, body io.ReadCloser) {
 		OptimizedPrompt: "",
 		State:           "pending"}
 
-	err = c.App.OptimimizationRepo.Insert(optimization)
+	err = c.Repo.OptimizationRepo.Insert(optimization)
 
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 		return
 	}
 
-	threadId, err := c.App.OAIRepo.postThread()
+	threadId, err := c.Repo.OAIRepo.PostThread()
 
 	defer func() {
-		err = c.App.OAIRepo.deleteThread(threadId)
+		err = c.Repo.OAIRepo.DeleteThread(threadId)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 		}
@@ -380,7 +376,7 @@ func (c OptimizationController) run(optimizationId string, body io.ReadCloser) {
 }
 
 func (c OptimizationController) readAnalysisState(optimizationId string) (*AnalysisState, error) {
-	records, err := c.App.RunRepo.Read(RunReadFilter{OptimizationId: optimizationId})
+	records, err := c.Repo.RunRepo.Read(RunReadFilter{OptimizationId: optimizationId})
 
 	if err != nil {
 		return nil, err
@@ -422,7 +418,7 @@ func (c EditModeEditorController) readOptimizationRun(optimizationId string) (*o
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			optimization, err := c.App.OptimimizationRepo.Read(optimizationId)
+			optimization, err := c.Repo.OptimizationRepo.Read(optimizationId)
 
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -437,7 +433,7 @@ func (c EditModeEditorController) readOptimizationRun(optimizationId string) (*o
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			suggestions, err := c.App.SuggestionRepo.Read(SuggestionReadFilter{OptimizationId: optimizationId})
+			suggestions, err := c.Repo.SuggestionRepo.Read(SuggestionReadFilter{OptimizationId: optimizationId})
 
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -456,12 +452,12 @@ func (c EditModeEditorController) readOptimizationRun(optimizationId string) (*o
 
 		suggestions, ok := <-suggOutputCh
 		if !ok {
-			return nil, errors.New("Error occured while retrieving suggestions")
+			return nil, errors.New("error occured while retrieving suggestions")
 		}
 
 		optimization, ok := <-opOutputCh
 		if !ok {
-			return nil, errors.New("Error occured while retrieving optimization")
+			return nil, errors.New("error occured while retrieving optimization")
 		}
 
 		return &optimizationRunRes{optimization: optimization, suggestions: suggestions}, nil
@@ -480,7 +476,7 @@ func (c IndexController) Handle(w http.ResponseWriter, r *http.Request) *AppResp
 		code := 405
 		title := "Method not allowed"
 		msg := "Sorry, we couldn't find the page you were looking for."
-		err := errors.New("Method not allowed")
+		err := errors.New("method not allowed")
 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 			Code: code, Message: msg, ContentType: "text/html", Error: err}
 	}
@@ -498,7 +494,7 @@ func (c AppController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
 		code := 405
 		title := "Method not allowed"
 		msg := "Sorry, we couldn't find the page you were looking for."
-		err := errors.New("Method not allowed")
+		err := errors.New("method not allowed")
 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 			Code: code, Message: msg, ContentType: "text/html", Error: err}
 	}
@@ -516,7 +512,7 @@ func (c DraftModeEditorController) Handle(w http.ResponseWriter, r *http.Request
 		code := 405
 		title := "Method not allowed"
 		msg := "Sorry, we couldn't find the page you were looking for."
-		err := errors.New("Method not allowed")
+		err := errors.New("method not allowed")
 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 			Code: code, Message: msg, ContentType: "text/html", Error: err}
 
@@ -524,8 +520,8 @@ func (c DraftModeEditorController) Handle(w http.ResponseWriter, r *http.Request
 }
 
 type EditModeEditorController struct {
-	App              *App
 	ComponentBuilder *ComponentBuilder
+	Repo             *Repo
 }
 
 func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
@@ -537,7 +533,7 @@ func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request)
 			code := 400
 			title := "Bad request"
 			msg := "Sorry, we couldn't find the page you were looking for."
-			err := errors.New("Missing optimization_id query parameter")
+			err := errors.New("missing optimization_id query parameter")
 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 				Code: code, Message: msg, ContentType: "text/html", Error: err}
 		}
@@ -566,7 +562,7 @@ func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request)
 		code := 405
 		title := "Method not allowed"
 		msg := "Sorry, we couldn't find the page you were looking for."
-		err := errors.New("Method not allowed")
+		err := errors.New("method not allowed")
 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 			Code: code, Message: msg, ContentType: "text/html", Error: err}
 
@@ -574,8 +570,8 @@ func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request)
 }
 
 type ReviewModeEditorController struct {
-	App              *App
 	ComponentBuilder *ComponentBuilder
+	Repo             *Repo
 }
 
 func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
@@ -583,7 +579,7 @@ func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Reques
 	case "GET":
 		id := r.URL.Query().Get("id")
 
-		optimization, err := c.App.OptimimizationRepo.Read(id)
+		optimization, err := c.Repo.OptimizationRepo.Read(id)
 
 		serverErrCode := 500
 		serverErrTitle := "Internal server error"
@@ -602,7 +598,7 @@ func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Reques
 		code := 405
 		title := "Method not allowed"
 		msg := "Sorry, we couldn't find the page you were looking for."
-		err := errors.New("Method not allowed")
+		err := errors.New("method not allowed")
 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 			Code: code, Message: msg, ContentType: "text/html", Error: err}
 
@@ -610,8 +606,8 @@ func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Reques
 }
 
 type OptimizationController struct {
-	App              *App
 	ComponentBuilder *ComponentBuilder
+	Repo             *Repo
 }
 
 func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
@@ -623,7 +619,7 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 			code := 400
 			title := "Bad request"
 			msg := "Sorry, we couldn't find the page you were looking for."
-			err := errors.New("Missing id query parameter")
+			err := errors.New("missing id query parameter")
 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 				Code: code, Message: msg, ContentType: "text/html", Error: err}
 		}
@@ -643,7 +639,7 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 		}
 
 		if state.Completed() {
-			optimization, err := c.App.OptimimizationRepo.Read(id)
+			optimization, err := c.Repo.OptimizationRepo.Read(id)
 
 			if err != nil {
 				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(serverErrCode), serverErrTitle, serverErrMsg),
@@ -675,7 +671,7 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 		code := 405
 		title := "Method not allowed"
 		msg := "Sorry, we couldn't find the page you were looking for."
-		err := errors.New("Method not allowed")
+		err := errors.New("method not allowed")
 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 			Code: code, Message: msg, ContentType: "text/html", Error: err}
 

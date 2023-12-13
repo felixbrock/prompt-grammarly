@@ -5,9 +5,9 @@
 ### CUSTOM ###
 ######################
 /tmp
-/scripts/env-dev.sh
 *_templ.go
 *_transpiled.css
+env.json
 
 ### Emacs ###
 # -*- mode: gitignore; -*-

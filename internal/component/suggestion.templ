@@ -1,6 +1,6 @@
 package component
 
-import "github.com/felixbrock/lemonai/internal/app"
+import "github.com/felixbrock/lemonai/internal/domain"
 
 templ suggestionCardField(title string, text string) {
 	<div class="text-left leading-tight px-2 py-2">
@@ -9,7 +9,7 @@ templ suggestionCardField(title string, text string) {
 	</div>
 }
 
-templ SuggestionCard(sugg app.Suggestion) {
+templ SuggestionCard(sugg domain.Suggestion) {
 	<li class="overflow-hidden grow shrink-0 min-h-max w-full my-2 rounded-xl border border-gray-200 divide-y divide-gray-100">
 		<div class="text-left leading-tight ">
 			<div class="flex flex-row items-center p-2 gap-2 bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500">

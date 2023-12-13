@@ -20,12 +20,12 @@ type ComponentBuilder struct {
 }
 
 type Config struct {
-	Port      string
-	OAIApiKey string
-	DBApiKey  string
+	Port      int    `json:"GO_PORT"`
+	OAIApiKey string `json:"OAI_API_KEY"`
+	DBApiKey  string `json:"DB_API_KEY"`
 }
 
-type optimimizationRepo interface {
+type optimizationRepo interface {
 	Insert(optimization domain.Optimization) error
 	Update(id string, state string, optimizedPrompt []byte) error
 	Read(id string) (*domain.Optimization, error)
@@ -60,28 +60,32 @@ type oaiRepo interface {
 	DeleteThread(threadId string) error
 }
 
+type Repo struct {
+	OptimizationRepo optimizationRepo
+	RunRepo          runRepo
+	SuggestionRepo   suggestionRepo
+	OAIRepo          oaiRepo
+}
+
 type App struct {
-	OptimimizationRepo optimimizationRepo
-	RunRepo            runRepo
-	SuggestionRepo     suggestionRepo
-	OAIRepo            oaiRepo
-	ComponentBuilder   ComponentBuilder
-	Config             Config
+	Repo             Repo
+	ComponentBuilder ComponentBuilder
+	Config           Config
 }
 
 func (a App) Start() {
 	http.Handle("/static/",
 		http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	http.Handle("/", AppHandler{IndexController{}})
-	http.Handle("/app", AppHandler{AppController{}})
-	http.Handle("/editor/draft", AppHandler{DraftModeEditorController{}})
-	http.Handle("/editor/edit", AppHandler{EditModeEditorController{}})
-	http.Handle("/editor/review", AppHandler{ReviewModeEditorController{}})
+	http.Handle("/", AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}})
+	http.Handle("/app", AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}})
+	http.Handle("/editor/draft", AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}})
+	http.Handle("/editor/edit", AppHandler{EditModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
+	http.Handle("/editor/review", AppHandler{ReviewModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
 	http.Handle("/optimizations", AppHandler{OptimizationController{
-		App: &a,
+		ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo,
 	}})
 
-	log.Printf("App running on %s...", a.Config.Port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", a.Config.Port), nil))
+	log.Printf("App running on %d...", a.Config.Port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", a.Config.Port), nil))
 }

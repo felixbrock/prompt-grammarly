@@ -1,12 +1,12 @@
 package component
 
-import "github.com/felixbrock/lemonai/internal/app"
 import "github.com/felixbrock/lemonai/internal/domain"
 
 type hxConfig struct {
 	Endpoint string
 	Method   string
 	Target   string
+	Include  string
 }
 
 type button struct {
@@ -17,7 +17,24 @@ type button struct {
 templ actionBar(buttons []button) {
 	<div class="flex flex-row-reverse gap-x-4">
 		for i := 0; i < len(buttons); i++ {
-			<button type="button" class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" hx-get={ buttons[i].HxConfig.Endpoint } hx-trigger="click" hx-target={ buttons[i].HxConfig.Target }>{ buttons[i].Label }</button>
+			<button
+ 				type="button"
+ 				class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+ 				if buttons[i].HxConfig.Method == "GET" {
+					hx-get={ buttons[i].HxConfig.Endpoint }
+				}
+ 				else
+ 				if buttons[i].HxConfig.Method == "POST" {
+					hx-post={ buttons[i].HxConfig.Endpoint }
+				}
+ 				if buttons[i].HxConfig.Include != "" {
+					hx-include={ buttons[i].HxConfig.Include }
+				}
+ 				hx-trigger="click"
+ 				hx-target={ buttons[i].HxConfig.Target }
+			>
+				{ buttons[i].Label }
+			</button>
 		}
 	</div>
 }
@@ -31,7 +48,7 @@ templ sectionWrapper(title string) {
 	</section>
 }
 
-templ editorWindow(title string, prompt string, enabled bool) {
+templ editorWindow(inputId string, title string, prompt string, enabled bool) {
 	@sectionWrapper(title) {
 		<div class="h-full flex flex-col">
 			<div class="h-6">
@@ -42,7 +59,7 @@ templ editorWindow(title string, prompt string, enabled bool) {
 				</div>
 			</div>
 			<div class="grow mt-2">
-				@TextField(prompt, enabled)
+				@TextField(inputId, prompt, enabled)
 			</div>
 		</div>
 	}
@@ -50,13 +67,13 @@ templ editorWindow(title string, prompt string, enabled bool) {
 
 templ DraftModeEditor() {
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("Custom Optimization Goal", "", true)
+		@editorWindow("instructions", "Custom Optimization Goal", "", true)
 	</div>
 	<div class="h-15/20 pb-4">
-		@editorWindow("Your Prompt", "", true)
+		@editorWindow("prompt", "Your Prompt", "", true)
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimize", Method: "POST", Target: "#editor"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimizations", Method: "POST", Target: "#editor", Include: "#instructions"}}})
 	</div>
 }
 
@@ -64,17 +81,17 @@ templ EditModeEditor(original string, optimized string, instructions string, sug
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("Custom Optimization Instructions", instructions,  true)
+		@editorWindow("instructions", "Custom Optimization Instructions", instructions,  true)
 	</div>
 	<div class="h-7/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("Your Prompt", original, true)
-		@editorWindow("Optimized Prompt", optimized, false)
+		@editorWindow("original", "Your Prompt", original, true)
+		@editorWindow("optimized", "Optimized Prompt", optimized, false)
 	</div>
 	<div class="h-8/20 pb-4">
 		@sectionWrapper("Suggestions") {
 			<ul class="px-2 h-full flex flex-col flex-nowrap gap-4 overflow-y-auto overflow-x-hidden">
-				for i := 0; i < len(suggestions); i++ {
-					@SuggestionCard(suggestions[i])
+				for i := 0; i < len(*suggestions); i++ {
+					@SuggestionCard((*suggestions)[i])
 				}
 			</ul>
 		}
@@ -86,8 +103,8 @@ templ EditModeEditor(original string, optimized string, instructions string, sug
 
 templ ReviewModeEditor(original string, optimized string) {
 	<div class="h-9/10 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("Your Prompt",original, true)
-		@editorWindow("Optimized Prompt",optimized, false)
+		@editorWindow("original","Your Prompt",original, true)
+		@editorWindow("optimized","Optimized Prompt",optimized, false)
 	</div>
 	<div class="h-1/10 pb-4">
 		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{Endpoint: "/editor/edit", Method: "POST", Target: "#editor"}}})

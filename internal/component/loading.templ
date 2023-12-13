@@ -6,26 +6,20 @@ import (
 	"github.com/felixbrock/lemonai/internal/app"
 )
 
-templ msgWrapper() {
-	<p class="m-y-2 italic text-sm font-bold">
-		{ children... }
-	</p>
-}
-
 templ analysisStateMsg(dimension string, finished bool) {
-	@msgWrapper {
+	<p class="m-y-2 italic text-sm font-bold">
 		if finished {
 			<span class="text-green-500">FINISHED { strings.ToUpper(dimension) } ANALYSIS</span>
 		} else {
 			<span>ANALYZING FOR { strings.ToUpper(dimension) }...</span>
 		}
-	}
+	</p>
 }
 
 templ optimizationStateMsg() {
-	@msgWrapper {
+	<p class="m-y-2 italic text-sm font-bold">
 		<span>OPTIMIZING PROMPT...</span>
-	}
+	</p>
 }
 
 templ Loading(optimizationId string, state app.AnalysisState) {

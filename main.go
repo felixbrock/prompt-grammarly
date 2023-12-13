@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -16,11 +17,8 @@ import (
 - Check for XSS
 - Address prompt injection
 - Block IP addresses: Too many requests
-- change every 2s trigger to "until done" (Jack)
 - Implement feedback logic
 - Implement parent child tracing
-- Implement custom instructions (Jack)
-- Prioritize custom instructions (Jack)
 - Connect to frontend (Jack)
 - Remove prompts from code base (.gitignore file)
 - Implement parent Id + Check where id needs to be passed (Jack)
@@ -30,27 +28,28 @@ import (
 - Add Posthog
 */
 
-func config() app.Config {
-	port := os.Getenv("GOPORT")
-	if port == "" {
-		port = "8000"
+func config() (*app.Config, error) {
+
+	env, err := os.ReadFile("env.json")
+	if err != nil {
+		return nil, err
 	}
 
-	oaiApiKey := os.Getenv("OAI_API_KEY")
-	if oaiApiKey == "" {
-		slog.Error("OAI_API_KEY environment variable not set")
+	var config app.Config
+	if err := json.Unmarshal(env, &config); err != nil {
+		return nil, err
 	}
 
-	dbApiKey := os.Getenv("DB_API_KEY")
-	if dbApiKey == "" {
-		slog.Error("DB_API_KEY environment variable not set")
-	}
-
-	return app.Config{Port: port, OAIApiKey: oaiApiKey, DBApiKey: dbApiKey}
+	return &config, nil
 }
 
 func main() {
-	config := config()
+	config, err := config()
+
+	if err != nil {
+		slog.Error(err.Error())
+		os.Exit(1)
+	}
 
 	componentBuilder := app.ComponentBuilder{
 		Index:   component.Index,
@@ -75,13 +74,17 @@ func main() {
 		"OpenAI-Beta:assistants=v1",
 		fmt.Sprintf("Authorization: Bearer %s", config.OAIApiKey)}}
 
+	repo := app.Repo{
+		OptimizationRepo: optRepo,
+		RunRepo:          runRepo,
+		SuggestionRepo:   suggRepo,
+		OAIRepo:          oaiRepo,
+	}
+
 	a := app.App{
-		OptimimizationRepo: optRepo,
-		RunRepo:            runRepo,
-		SuggestionRepo:     suggRepo,
-		OAIRepo:            oaiRepo,
-		ComponentBuilder:   componentBuilder,
-		Config:             config,
+		Repo:             repo,
+		ComponentBuilder: componentBuilder,
+		Config:           *config,
 	}
 
 	a.Start()
