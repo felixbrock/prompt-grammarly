@@ -4,22 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/felixbrock/lemonai/internal/app"
 	"github.com/felixbrock/lemonai/internal/domain"
 )
 
-type OptimizationRepo struct {
+type RunRepo struct {
 	BaseHeaders []string
 	BaseUrl     string
 }
 
-func (r OptimizationRepo) Insert(optimization domain.Optimization) error {
-	body, err := json.Marshal(optimization)
+func (r RunRepo) Insert(run domain.Run) error {
+	body, err := json.Marshal(run)
 
 	if err != nil {
 		return err
 	}
 
-	_, err = request[domain.Optimization](reqConfig{
+	_, err = request[domain.Run](reqConfig{
 		Method:  "POST",
 		Url:     r.BaseUrl,
 		Body:    body,
@@ -33,14 +34,14 @@ func (r OptimizationRepo) Insert(optimization domain.Optimization) error {
 	return nil
 }
 
-func (r OptimizationRepo) Update(id string, state string, optimizedPrompt []byte) error {
-	body, err := json.Marshal(fmt.Sprintf(`{"state": "%s", "optimized_prompt": "%s"}`, state, optimizedPrompt))
+func (r RunRepo) Update(id string, state string) error {
+	body, err := json.Marshal(fmt.Sprintf(`{"state": "%s"}`, state))
 
 	if err != nil {
 		return err
 	}
 
-	_, err = request[domain.Optimization](reqConfig{
+	_, err = request[domain.Run](reqConfig{
 		Method:    "PATCH",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
@@ -55,11 +56,11 @@ func (r OptimizationRepo) Update(id string, state string, optimizedPrompt []byte
 	return nil
 }
 
-func (r OptimizationRepo) Read(id string) (*domain.Optimization, error) {
-	record, err := request[domain.Optimization](reqConfig{
+func (r RunRepo) Read(filter app.RunReadFilter) (*[]domain.Run, error) {
+	records, err := request[[]domain.Run](reqConfig{
 		Method:    "GET",
 		Url:       r.BaseUrl,
-		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
+		UrlParams: []string{fmt.Sprintf("optimization_id=eq.%s", filter.OptimizationId)},
 		Body:      nil,
 		Headers:   r.BaseHeaders},
 		200)
@@ -68,5 +69,5 @@ func (r OptimizationRepo) Read(id string) (*domain.Optimization, error) {
 		return nil, err
 	}
 
-	return record, nil
+	return records, nil
 }

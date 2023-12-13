@@ -3,6 +3,7 @@ package persistence
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -10,14 +11,16 @@ import (
 )
 
 type reqConfig struct {
-	Method  string
-	Url     string
-	Headers []string
-	Body    []byte
+	Method    string
+	Url       string
+	UrlParams []string
+	Headers   []string
+	Body      []byte
 }
 
 func request[T any](config reqConfig, expectedResCode int) (*T, error) {
-	req, err := http.NewRequest(config.Method, config.Url, bytes.NewBuffer(config.Body))
+	url := fmt.Sprintf("%s?%s", config.Url, strings.Join(config.UrlParams, "&"))
+	req, err := http.NewRequest(config.Method, url, bytes.NewBuffer(config.Body))
 
 	if err != nil {
 		return nil, err

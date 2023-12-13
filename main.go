@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/felixbrock/lemonai/internal/app"
+	"github.com/felixbrock/lemonai/internal/component"
 	"github.com/felixbrock/lemonai/internal/persistence"
 )
 
@@ -13,6 +14,7 @@ import (
 - Remove credentials from all files (Jack)
 - Check for SQL injection
 - Check for XSS
+- Address prompt injection
 - Block IP addresses: Too many requests
 - change every 2s trigger to "until done" (Jack)
 - Implement feedback logic
@@ -20,6 +22,8 @@ import (
 - Implement custom instructions (Jack)
 - Prioritize custom instructions (Jack)
 - Connect to frontend (Jack)
+- Remove prompts from code base (.gitignore file)
+- Implement parent Id + Check where id needs to be passed (Jack)
 
 - Host (Jack)
 - Make sure db is secure (Jack)
@@ -48,9 +52,24 @@ func config() app.Config {
 func main() {
 	config := config()
 
-	optRepo := persistence.OptimizationRepo{BaseHeaders: []string{
+	componentBuilder := app.ComponentBuilder{
+		Index:   component.Index,
+		App:     component.App,
+		Draft:   component.DraftModeEditor,
+		Edit:    component.EditModeEditor,
+		Review:  component.ReviewModeEditor,
+		Loading: component.Loading,
+		Error:   component.Error,
+	}
+
+	dbHeader := []string{
 		fmt.Sprintf("apikey: %s", config.DBApiKey),
-		fmt.Sprintf("Authorization: Bearer %s", config.DBApiKey)}}
+		fmt.Sprintf("Authorization: Bearer %s", config.DBApiKey)}
+	dbUrlBase := "https://cllevlrokigwvbbnbfiu.supabase.co/rest/v1"
+
+	optRepo := persistence.OptimizationRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/optimization", dbUrlBase)}
+	suggRepo := persistence.SuggestionRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/suggestion", dbUrlBase)}
+	runRepo := persistence.RunRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/run", dbUrlBase)}
 	oaiRepo := persistence.OpenAIRepo{BaseHeaders: []string{
 		"Content-Type:application/json",
 		"OpenAI-Beta:assistants=v1",
@@ -58,9 +77,11 @@ func main() {
 
 	a := app.App{
 		OptimimizationRepo: optRepo,
+		RunRepo:            runRepo,
+		SuggestionRepo:     suggRepo,
 		OAIRepo:            oaiRepo,
-
-		Config: config,
+		ComponentBuilder:   componentBuilder,
+		Config:             config,
 	}
 
 	a.Start()

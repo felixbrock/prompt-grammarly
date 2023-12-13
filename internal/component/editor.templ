@@ -1,4 +1,7 @@
-package components
+package component
+
+import "github.com/felixbrock/lemonai/internal/app"
+import "github.com/felixbrock/lemonai/internal/domain"
 
 type hxConfig struct {
 	Endpoint string
@@ -57,7 +60,7 @@ templ DraftModeEditor() {
 	</div>
 }
 
-templ EditModeEditor(original string, optimized string, instructions string, suggestions []suggestion) {
+templ EditModeEditor(original string, optimized string, instructions string, suggestions *[]domain.Suggestion) {
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
 	<div class="h-3/20 w-full pb-4">

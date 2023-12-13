@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/felixbrock/lemonai/internal/components"
 	"github.com/felixbrock/lemonai/internal/domain"
 	"github.com/google/uuid"
 )
@@ -41,11 +40,10 @@ type editorReq struct {
 	EditorName string `json:"editorName"`
 }
 
-type suggestion struct {
+type oaiSuggestion struct {
 	Suggestion string `json:"suggestion"`
 	Reasoning  string `json:"reasoning"`
 	Target     string `json:"original"`
-	Type       xxx
 }
 
 type OAIRun struct {
@@ -70,19 +68,19 @@ type OAIMessageListing struct {
 	Data []OAIMessage `json:"data"`
 }
 
-type analysisState struct {
-	CustomInstructions bool
-	ContextualRichness bool
-	Conciseness        bool
-	Clarity            bool
-	Consistency        bool
+type AnalysisState struct {
+	CustomCompleted             bool
+	ContextualRichnessCompleted bool
+	ConcisenessCompleted        bool
+	ClarityCompleted            bool
+	ConsistencyCompleted        bool
 }
 
-func (s analysisState) isCompleted() bool {
-	return s.CustomInstructions && s.ContextualRichness && s.Conciseness && s.Clarity && s.Consistency
+func (s AnalysisState) Completed() bool {
+	return s.CustomCompleted && s.ContextualRichnessCompleted && s.ConcisenessCompleted && s.ClarityCompleted && s.ConsistencyCompleted
 }
 
-func (c OptimizationController) runAssistant(threadId string, userPrompt string, assistant assistant) (*[]byte, error) {
+func (c OptimizationController) runAssistant(threadId string, userPrompt string, assistant assistant) ([]byte, error) {
 	err := c.writeUserPrompt(threadId, userPrompt)
 
 	if err != nil {
@@ -121,7 +119,7 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 	}
 
 	bMsg := []byte(msg.Content[0].Text.Value)
-	return &bMsg, nil
+	return bMsg, nil
 }
 
 func (c OptimizationController) writeUserPrompt(threadId string, prompt string) error {
@@ -140,18 +138,33 @@ func (c OptimizationController) writeUserPrompt(threadId string, prompt string) 
 	return nil
 }
 
+func (c OptimizationController) genCustomAssistantUserPrompt(customInstructions string, prompt string) string {
+	return fmt.Sprintf(
+		`Consider the following Custom Goal:
+
+		%s
+
+		Evaluate the the following model instruction against the custom goal:
+
+		%s
+
+		`, customInstructions, prompt)
+}
+
 func (c OptimizationController) genAssistantUserPrompt(assistantName string, prompt string) string {
 	return fmt.Sprintf(
 		`Evaluate the %s of the following model instruction:
 
 		%s
 
-		`, strings.ToLower(assistantName), prompt)
+		`, strings.Join(strings.Split(assistantName, "_"), " "), prompt)
 }
 
-func (c OptimizationController) genOperatorUserPrompt(assistantName string, msg []byte) string {
+func (c OptimizationController) genOperatorUserPrompt(originalPrompt string, msg []byte) string {
+
 	return fmt.Sprintf(
-		`Apply the following list of suggestions to improve contextual richness to the following model instructions.
+		`Apply the following list of suggestions to improve the following model instructions.
+		Make sure to apply all suggestions and to weight suggestions of type 'custom' higher than the other suggestions .
 
 		Model Instructions:
 
@@ -162,11 +175,11 @@ func (c OptimizationController) genOperatorUserPrompt(assistantName string, msg 
 
 		%s
 
-		`, strings.ToLower(assistantName), msg)
+		`, originalPrompt, msg)
 }
 
-func (c OptimizationController) apply(threadId string, suggestions []suggestion) (*[]byte, error) {
-	name := "Operator"
+func (c OptimizationController) apply(threadId string, suggestions []oaiSuggestion) ([]byte, error) {
+	name := "operator"
 	operator := assistant{Id: "asst_qUn97Ck3zzdvNToMVAMhNzTk", Name: name}
 
 	bSugg, err := json.Marshal(suggestions)
@@ -188,7 +201,12 @@ func (c OptimizationController) apply(threadId string, suggestions []suggestion)
 	return msg, nil
 }
 
-func (c OptimizationController) suggest(optimizationId string, threadId string, prompt string, targetAssistant assistant) ([]suggestion, error) {
+type optimizationBase struct {
+	Prompt       string
+	Instructions string
+}
+
+func (c OptimizationController) suggest(optimizationId string, threadId string, base optimizationBase, targetAssistant assistant) ([]oaiSuggestion, error) {
 	runId := uuid.New().String()
 	run := domain.Run{
 		Id:             runId,
@@ -217,7 +235,17 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 
 	}()
 
-	userPrompt := c.genAssistantUserPrompt(targetAssistant.Name, prompt)
+	var userPrompt string
+	if targetAssistant.Name == "custom" {
+		if base.Instructions == "" {
+			return nil, errors.New("missing custom instructions error")
+		}
+
+		userPrompt = c.genCustomAssistantUserPrompt(base.Instructions, base.Prompt)
+	} else {
+
+		userPrompt = c.genAssistantUserPrompt(targetAssistant.Name, base.Prompt)
+	}
 
 	msg, err := c.runAssistant(threadId, userPrompt, targetAssistant)
 
@@ -225,18 +253,20 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 		return nil, err
 	}
 
-	var suggestions *[]suggestion
-	suggestions, err = ReadJSON[[]suggestion](*msg)
+	var suggestions *[]oaiSuggestion
+	suggestions, err = ReadJSON[[]oaiSuggestion](msg)
 
 	suggestionRecords := make([]domain.Suggestion, len(*suggestions))
 	for i := 0; i < len(*suggestions); i++ {
 		suggestionRecords[i] = domain.Suggestion{
-			Id:           uuid.New().String(),
-			Suggestion:   (*suggestions)[i].Suggestion,
-			Reasoning:    (*suggestions)[i].Reasoning,
-			UserFeedback: 0,
-			Target:       (*suggestions)[i].Target,
-			RunId:        runId}
+			Id:             uuid.New().String(),
+			Suggestion:     (*suggestions)[i].Suggestion,
+			Reasoning:      (*suggestions)[i].Reasoning,
+			UserFeedback:   0,
+			Target:         (*suggestions)[i].Target,
+			Type:           targetAssistant.Name,
+			RunId:          runId,
+			OptimizationId: optimizationId}
 	}
 
 	err = c.App.SuggestionRepo.Insert(suggestionRecords)
@@ -250,21 +280,21 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 	return *suggestions, nil
 }
 
-func (c OptimizationController) optimize(optimizationId string, threadId string, originalPrompt string) {
-	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "Contextual Richness"},
-		{Id: "asst_3q6LvmiPZyoPChdrcuqMxOvh", Name: "Conciseness"},
-		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "Clarity"},
-		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "Consistency"},
-		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "Custom"}}
+func (c OptimizationController) optimize(optimizationId string, threadId string, base optimizationBase) {
+	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "contextual_richness"},
+		{Id: "asst_3q6LvmiPZyoPChdrcuqMxOvh", Name: "conciseness"},
+		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "clarity"},
+		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "consistency"},
+		{Id: "asst_9zcQxyRh4E10Agg08p8mYDO8", Name: "custom"}}
 
 	var wg sync.WaitGroup
-	outputCh := make(chan []suggestion)
+	outputCh := make(chan []oaiSuggestion)
 
 	for i := 0; i < len(assistants); i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			suggestions, err := c.suggest(optimizationId, threadId, originalPrompt, assistants[i])
+			suggestions, err := c.suggest(optimizationId, threadId, base, assistants[i])
 
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -281,7 +311,7 @@ func (c OptimizationController) optimize(optimizationId string, threadId string,
 		close(outputCh)
 	}()
 
-	var suggestions []suggestion
+	var suggestions []oaiSuggestion
 	for {
 		output, ok := <-outputCh
 		if !ok {
@@ -290,7 +320,7 @@ func (c OptimizationController) optimize(optimizationId string, threadId string,
 		suggestions = append(suggestions, output...)
 	}
 
-	var msg *[]byte
+	var msg []byte
 	msg, err := c.apply(threadId, suggestions)
 
 	if err != nil {
@@ -298,7 +328,7 @@ func (c OptimizationController) optimize(optimizationId string, threadId string,
 		return
 	}
 
-	c.App.OptimimizationRepo.Update(optimizationId, "completed", *msg)
+	c.App.OptimimizationRepo.Update(optimizationId, "completed", msg)
 }
 
 func (c OptimizationController) run(optimizationId string, body io.ReadCloser) {
@@ -345,58 +375,246 @@ func (c OptimizationController) run(optimizationId string, body io.ReadCloser) {
 		return
 	}
 
-	c.optimize(optimizationId, threadId, optimizationReqBody.OriginalPrompt)
+	c.optimize(optimizationId, threadId, optimizationBase{Prompt: optimizationReqBody.OriginalPrompt,
+		Instructions: optimizationReqBody.Instructions})
 }
 
-func (c OptimizationController) readAnalysisState(optimizationId string) (analysisState, error) {
-	return "", nil
+func (c OptimizationController) readAnalysisState(optimizationId string) (*AnalysisState, error) {
+	records, err := c.App.RunRepo.Read(RunReadFilter{OptimizationId: optimizationId})
+
+	if err != nil {
+		return nil, err
+	}
+
+	var state AnalysisState
+	for i := 0; i < len(*records); i++ {
+		record := (*records)[i]
+		runCompleted := record.State == "completed"
+		switch record.Type {
+		case "contextual_richness":
+			state.ContextualRichnessCompleted = runCompleted
+		case "conciseness":
+			state.ConsistencyCompleted = runCompleted
+		case "clarity":
+			state.ClarityCompleted = runCompleted
+		case "consistency":
+			state.ConsistencyCompleted = runCompleted
+		case "custom":
+			state.CustomCompleted = runCompleted
+		default:
+			return nil, errors.New("unexpected run type error")
+		}
+	}
+
+	return &state, nil
 }
 
-func (c OptimizationController) readOptimization(optimizationId string) (domain.Optimization, error) {
-	return "", nil
+type optimizationRunRes struct {
+	optimization *domain.Optimization
+	suggestions  *[]domain.Suggestion
+}
+
+func (c EditModeEditorController) readOptimizationRun(optimizationId string) (*optimizationRunRes, error) {
+	{
+		var wg sync.WaitGroup
+
+		opOutputCh := make(chan *domain.Optimization)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			optimization, err := c.App.OptimimizationRepo.Read(optimizationId)
+
+			if err != nil {
+				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+				return
+			}
+
+			opOutputCh <- optimization
+
+		}()
+
+		suggOutputCh := make(chan *[]domain.Suggestion)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			suggestions, err := c.App.SuggestionRepo.Read(SuggestionReadFilter{OptimizationId: optimizationId})
+
+			if err != nil {
+				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+				return
+			}
+
+			suggOutputCh <- suggestions
+
+		}()
+
+		go func() {
+			wg.Wait()
+			close(opOutputCh)
+			close(suggOutputCh)
+		}()
+
+		suggestions, ok := <-suggOutputCh
+		if !ok {
+			return nil, errors.New("Error occured while retrieving suggestions")
+		}
+
+		optimization, ok := <-opOutputCh
+		if !ok {
+			return nil, errors.New("Error occured while retrieving optimization")
+		}
+
+		return &optimizationRunRes{optimization: optimization, suggestions: suggestions}, nil
+	}
 }
 
 type IndexController struct {
+	ComponentBuilder *ComponentBuilder
 }
 
 func (c IndexController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	return &AppResp{Component: components.Index(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	switch r.Method {
+	case "GET":
+		return &AppResp{Component: c.ComponentBuilder.Index(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	default:
+		code := 405
+		title := "Method not allowed"
+		msg := "Sorry, we couldn't find the page you were looking for."
+		err := errors.New("Method not allowed")
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
+			Code: code, Message: msg, ContentType: "text/html", Error: err}
+	}
 }
 
 type AppController struct {
+	ComponentBuilder *ComponentBuilder
 }
 
 func (c AppController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	return &AppResp{Component: components.App(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	switch r.Method {
+	case "GET":
+		return &AppResp{Component: c.ComponentBuilder.App(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	default:
+		code := 405
+		title := "Method not allowed"
+		msg := "Sorry, we couldn't find the page you were looking for."
+		err := errors.New("Method not allowed")
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
+			Code: code, Message: msg, ContentType: "text/html", Error: err}
+	}
 }
 
 type DraftModeEditorController struct {
+	ComponentBuilder *ComponentBuilder
 }
 
 func (c DraftModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	return &AppResp{Component: components.DraftModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	switch r.Method {
+	case "GET":
+		return &AppResp{Component: c.ComponentBuilder.Draft(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	default:
+		code := 405
+		title := "Method not allowed"
+		msg := "Sorry, we couldn't find the page you were looking for."
+		err := errors.New("Method not allowed")
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
+			Code: code, Message: msg, ContentType: "text/html", Error: err}
+
+	}
 }
 
 type EditModeEditorController struct {
+	App              *App
+	ComponentBuilder *ComponentBuilder
 }
 
 func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	return &AppResp{Component: components.EditModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	switch r.Method {
+	case "GET":
+		id := r.URL.Query().Get("optimization_id")
+
+		if id == "" {
+			code := 400
+			title := "Bad request"
+			msg := "Sorry, we couldn't find the page you were looking for."
+			err := errors.New("Missing optimization_id query parameter")
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
+				Code: code, Message: msg, ContentType: "text/html", Error: err}
+		}
+
+		runData, err := c.readOptimizationRun(id)
+
+		serverErrCode := 500
+		serverErrTitle := "Internal server error"
+		serverErrMsg := "Sorry, there was an internal server error."
+
+		if err != nil {
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(serverErrCode), serverErrTitle, serverErrMsg),
+				Code:        serverErrCode,
+				Message:     serverErrMsg,
+				ContentType: "text/html",
+				Error:       err}
+		}
+
+		return &AppResp{Component: c.ComponentBuilder.Edit(
+			runData.optimization.OriginalPrompt,
+			runData.optimization.OptimizedPrompt,
+			runData.optimization.Instructions,
+			runData.suggestions),
+			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	default:
+		code := 405
+		title := "Method not allowed"
+		msg := "Sorry, we couldn't find the page you were looking for."
+		err := errors.New("Method not allowed")
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
+			Code: code, Message: msg, ContentType: "text/html", Error: err}
+
+	}
 }
 
 type ReviewModeEditorController struct {
+	App              *App
+	ComponentBuilder *ComponentBuilder
 }
 
 func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	return &AppResp{Component: components.ReviewModeEditor(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	switch r.Method {
+	case "GET":
+		id := r.URL.Query().Get("id")
+
+		optimization, err := c.App.OptimimizationRepo.Read(id)
+
+		serverErrCode := 500
+		serverErrTitle := "Internal server error"
+		serverErrMsg := "Sorry, there was an internal server error."
+		if err != nil {
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(serverErrCode), serverErrTitle, serverErrMsg),
+				Code:        serverErrCode,
+				Message:     serverErrMsg,
+				ContentType: "text/html",
+				Error:       err}
+		}
+
+		return &AppResp{Component: c.ComponentBuilder.Review(optimization.OriginalPrompt, optimization.OptimizedPrompt),
+			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	default:
+		code := 405
+		title := "Method not allowed"
+		msg := "Sorry, we couldn't find the page you were looking for."
+		err := errors.New("Method not allowed")
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
+			Code: code, Message: msg, ContentType: "text/html", Error: err}
+
+	}
 }
 
 type OptimizationController struct {
-	App *App
+	App              *App
+	ComponentBuilder *ComponentBuilder
 }
 
 func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-
 	switch r.Method {
 	case "GET":
 		id := r.URL.Query().Get("id")
@@ -406,45 +624,59 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 			title := "Bad request"
 			msg := "Sorry, we couldn't find the page you were looking for."
 			err := errors.New("Missing id query parameter")
-			return &AppResp{Component: components.Error(strconv.Itoa(code), title, msg),
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 				Code: code, Message: msg, ContentType: "text/html", Error: err}
 		}
 
 		state, err := c.readAnalysisState(id)
 
+		serverErrCode := 500
+		serverErrTitle := "Internal server error"
+		serverErrMsg := "Sorry, there was an internal server error."
+
 		if err != nil {
-			code := 500
-			title := "Internal server error"
-			msg := "Sorry, there was an internal server error."
-			return &AppResp{Component: components.Error(strconv.Itoa(code), title, msg),
-				Code: code, Message: msg, ContentType: "text/html", Error: err}
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(serverErrCode), serverErrTitle, serverErrMsg),
+				Code:        serverErrCode,
+				Message:     serverErrMsg,
+				ContentType: "text/html",
+				Error:       err}
 		}
 
-		if state.isCompleted() {
-			optimization, err := c.readOptimization(id)
+		if state.Completed() {
+			optimization, err := c.App.OptimimizationRepo.Read(id)
 
-			return &AppResp{Component: components.ReviewModeEditor(optimization.OriginalPrompt, optimization.OptimizedPrompt),
+			if err != nil {
+				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(serverErrCode), serverErrTitle, serverErrMsg),
+					Code:        serverErrCode,
+					Message:     serverErrMsg,
+					ContentType: "text/html",
+					Error:       err}
+			}
+
+			return &AppResp{Component: c.ComponentBuilder.Review(optimization.OriginalPrompt, optimization.OptimizedPrompt),
 				Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 		}
 
+		return &AppResp{Component: c.ComponentBuilder.Loading(id, *state),
+			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	case "POST":
 		optimizationId := uuid.New().String()
 
 		go c.run(optimizationId, r.Body)
 
-		return &AppResp{Component: components.Loading(optimizationId, analysisState{
-			CustomInstructions: false,
-			ContextualRichness: false,
-			Conciseness:        false,
-			Clarity:            false,
-			Consistency:        false}),
+		return &AppResp{Component: c.ComponentBuilder.Loading(optimizationId, AnalysisState{
+			CustomCompleted:             false,
+			ContextualRichnessCompleted: false,
+			ConcisenessCompleted:        false,
+			ClarityCompleted:            false,
+			ConsistencyCompleted:        false}),
 			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
 		code := 405
 		title := "Method not allowed"
 		msg := "Sorry, we couldn't find the page you were looking for."
 		err := errors.New("Method not allowed")
-		return &AppResp{Component: components.Error(strconv.Itoa(code), title, msg),
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(code), title, msg),
 			Code: code, Message: msg, ContentType: "text/html", Error: err}
 
 	}

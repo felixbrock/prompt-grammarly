@@ -1,14 +1,10 @@
-package components
+package component
 
-import "strings"
+import (
+	"strings"
 
-type AnalysisState struct {
-	CustomInstructions bool
-	ContextualRichness bool
-	Conciseness        bool
-	Clarity            bool
-	Consistency        bool
-}
+	"github.com/felixbrock/lemonai/internal/app"
+)
 
 templ msgWrapper() {
 	<p class="m-y-2 italic text-sm font-bold">
@@ -32,16 +28,16 @@ templ optimizationStateMsg() {
 	}
 }
 
-templ Loading(optimizationId string, analysisState AnalysisState) {
+templ Loading(optimizationId string, state app.AnalysisState) {
 	<div class="flex items-center justify-center h-full w-full" hx-get={ "optimizations?id=" + optimizationId } hx-swap="outerHTML" hx-trigger="every 2s">
 		<div class="flex flex-col items-center gap-2">
 			<img class="animate-pulse" src="/static/images/lemonai-2x.png"/>
-			@analysisStateMsg("Custom Instructions", analysisState.CustomInstructions)
-			@analysisStateMsg("Contextual Richness", analysisState.ContextualRichness)
-			@analysisStateMsg("Conciseness", analysisState.Conciseness)
-			@analysisStateMsg("Clarity", analysisState.Clarity)
-			@analysisStateMsg("Consistency", analysisState.Consistency)
-			if analysisState.CustomInstructions && analysisState.ContextualRichness && analysisState.Conciseness && analysisState.Clarity && analysisState.Consistency {
+			@analysisStateMsg("Custom Instructions", state.CustomCompleted)
+			@analysisStateMsg("Contextual Richness", state.ContextualRichnessCompleted)
+			@analysisStateMsg("Conciseness", state.ConcisenessCompleted)
+			@analysisStateMsg("Clarity", state.ClarityCompleted)
+			@analysisStateMsg("Consistency", state.ConsistencyCompleted)
+			if state.Completed() {
 				@optimizationStateMsg()
 			}
 		</div>

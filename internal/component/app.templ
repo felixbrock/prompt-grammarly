@@ -1,4 +1,4 @@
-package components
+package component
 
 templ header() {
 	<header class=" bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 pb-24">
@@ -27,7 +27,7 @@ templ main() {
 		<div class="h-full mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
 			<h1 class="sr-only">Lemonai Prompt Optimizer</h1>
 			<div class="h-full" id="editor">
-				@EditModeEditor()
+				@DraftModeEditor()
 			</div>
 		</div>
 	</main>
