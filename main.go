@@ -22,6 +22,7 @@ import (
 - Connect to frontend (Jack)
 - Remove prompts from code base (.gitignore file)
 - Implement parent Id + Check where id needs to be passed (Jack)
+- update env base and add assistant ids
 
 - Host (Jack)
 - Make sure db is secure (Jack)

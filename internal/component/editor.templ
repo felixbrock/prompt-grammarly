@@ -105,7 +105,7 @@ templ EditModeEditor(id string, original string, optimized string, instructions 
 
 templ ReviewModeEditor(original string, optimized string) {
 	<div class="h-9/10 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("original","Your Prompt",original, true)
+		@editorWindow("original","Your Prompt",original, false)
 		@editorWindow("optimized","Optimized Prompt",optimized, false)
 	</div>
 	<div class="h-1/10 pb-4">

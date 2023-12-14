@@ -40,8 +40,6 @@ func request[T any](config reqConfig, expectedResCode int) (*T, error) {
 	} else if resp.StatusCode != expectedResCode {
 		body, _ := app.Read(resp.Body)
 		return nil, fmt.Errorf("unexpected response status code error: %s", body)
-
-		one thread per optimization?????
 	}
 
 	body, err := app.Read(resp.Body)

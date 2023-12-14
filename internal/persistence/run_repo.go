@@ -35,19 +35,15 @@ func (r RunRepo) Insert(run domain.Run) error {
 }
 
 func (r RunRepo) Update(id string, state string) error {
-	body, err := json.Marshal(fmt.Sprintf(`{"state": "%s"}`, state))
+	body := []byte(fmt.Sprintf(`{"state": "%s"}`, state))
 
-	if err != nil {
-		return err
-	}
-
-	_, err = request[domain.Run](reqConfig{
+	_, err := request[domain.Run](reqConfig{
 		Method:    "PATCH",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
 		Body:      body,
 		Headers:   append(r.BaseHeaders, "Content-Type:application/json")},
-		201)
+		204)
 
 	if err != nil {
 		return err

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/felixbrock/lemonai/internal/app"
@@ -47,7 +48,7 @@ func (r OptimizationRepo) Update(id string, opts app.OpUpdateOpts) error {
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
 		Body:      body,
 		Headers:   append(r.BaseHeaders, "Content-Type:application/json")},
-		201)
+		204)
 
 	if err != nil {
 		return err
@@ -57,7 +58,7 @@ func (r OptimizationRepo) Update(id string, opts app.OpUpdateOpts) error {
 }
 
 func (r OptimizationRepo) Read(id string) (*domain.Optimization, error) {
-	record, err := request[domain.Optimization](reqConfig{
+	records, err := request[[]domain.Optimization](reqConfig{
 		Method:    "GET",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
@@ -67,7 +68,11 @@ func (r OptimizationRepo) Read(id string) (*domain.Optimization, error) {
 
 	if err != nil {
 		return nil, err
+	} else if len(*records) == 0 {
+		return nil, errors.New("no optimization found")
+	} else if len(*records) > 1 {
+		return nil, errors.New("multiple optimizations found")
 	}
 
-	return record, nil
+	return &(*records)[0], nil
 }

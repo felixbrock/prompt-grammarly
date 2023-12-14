@@ -88,7 +88,7 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 		return nil, err
 	}
 
-	fmt.Printf("waiting for %s assistant entity to complete...\n", assistant.Name)
+	slog.Info(fmt.Sprintf("Running %s analysis...\n", assistant.Name))
 	for entity.Status != "completed" {
 		entity, err = c.Repo.OAIRepo.GetRun(threadId, entity.Id)
 		if err != nil {
@@ -96,7 +96,6 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 		}
 		time.Sleep(1000)
 	}
-	fmt.Printf("completed %s assistant entity\n", assistant.Name)
 
 	var msgs *[]OAIMessage
 	msgs, err = c.Repo.OAIRepo.GetMsgs(threadId)
@@ -173,25 +172,35 @@ func (c OptimizationController) genOperatorUserPrompt(originalPrompt string, msg
 		`, originalPrompt, msg)
 }
 
-func (c OptimizationController) apply(threadId string, suggestions []oaiSuggestion) ([]byte, error) {
-	name := "operator"
-	operator := assistant{Id: "asst_qUn97Ck3zzdvNToMVAMhNzTk", Name: name}
+func (c OptimizationController) apply(suggestions []oaiSuggestion) ([]byte, error) {
+	operator := assistant{Id: "asst_qUn97Ck3zzdvNToMVAMhNzTk", Name: "operator"}
 
-	bSugg, err := json.Marshal(suggestions)
-
-	if err != nil {
-		return nil, err
-	}
-
-	userPrompt := c.genOperatorUserPrompt(operator.Name, bSugg)
-
-	msg, err := c.runAssistant(threadId, userPrompt, operator)
+	bSuggs, err := json.Marshal(suggestions)
 
 	if err != nil {
 		return nil, err
 	}
 
-	slog.Info(fmt.Sprintf("Successfully generated %s suggestions", name))
+	userPrompt := c.genOperatorUserPrompt(operator.Name, bSuggs)
+
+	thId, err := c.Repo.OAIRepo.PostThread()
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err = c.Repo.OAIRepo.DeleteThread(thId)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+		}
+	}()
+
+	msg, err := c.runAssistant(thId, userPrompt, operator)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return msg, nil
 }
@@ -233,7 +242,7 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 	var userPrompt string
 	if targetAssistant.Name == "custom" {
 		if base.Instructions == "" {
-			return nil, errors.New("missing custom instructions error")
+			return []oaiSuggestion{}, nil
 		}
 
 		userPrompt = c.genCustomAssistantUserPrompt(base.Instructions, base.Prompt)
@@ -275,7 +284,7 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 	return *suggestions, nil
 }
 
-func (c OptimizationController) optimize(opId string, threadId string, parentId string, base optimizationBase) {
+func (c OptimizationController) optimize(opId string, parentId string, base optimizationBase) {
 	assistants := []assistant{{Id: "asst_BxUQqxSD8tcvQoyR6T5iom3L", Name: "contextual_richness"},
 		{Id: "asst_3q6LvmiPZyoPChdrcuqMxOvh", Name: "conciseness"},
 		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "clarity"},
@@ -289,6 +298,21 @@ func (c OptimizationController) optimize(opId string, threadId string, parentId 
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
+
+			threadId, err := c.Repo.OAIRepo.PostThread()
+
+			if err != nil {
+				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+				return
+			}
+
+			defer func() {
+				err = c.Repo.OAIRepo.DeleteThread(threadId)
+				if err != nil {
+					slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+				}
+			}()
+
 			suggestions, err := c.suggest(opId, threadId, base, assistants[id])
 
 			if err != nil {
@@ -297,7 +321,6 @@ func (c OptimizationController) optimize(opId string, threadId string, parentId 
 			}
 
 			outputCh <- suggestions
-
 		}(i)
 	}
 
@@ -316,7 +339,7 @@ func (c OptimizationController) optimize(opId string, threadId string, parentId 
 	}
 
 	var msg []byte
-	msg, err := c.apply(threadId, suggestions)
+	msg, err := c.apply(suggestions)
 
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -325,7 +348,7 @@ func (c OptimizationController) optimize(opId string, threadId string, parentId 
 
 	var opts OpUpdateOpts
 	opts.State = "completed"
-	opts.OptimizedPrompt = msg
+	opts.OptimizedPrompt = string(msg)
 	if parentId != "" {
 		opts.ParentId = parentId
 	}
@@ -356,21 +379,7 @@ func (c OptimizationController) run(opId string, body []byte) {
 		return
 	}
 
-	threadId, err := c.Repo.OAIRepo.PostThread()
-
-	defer func() {
-		err = c.Repo.OAIRepo.DeleteThread(threadId)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
-		}
-	}()
-
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
-		return
-	}
-
-	c.optimize(opId, threadId, opReqBody.ParentId, optimizationBase{Prompt: opReqBody.OriginalPrompt,
+	c.optimize(opId, opReqBody.ParentId, optimizationBase{Prompt: opReqBody.OriginalPrompt,
 		Instructions: opReqBody.Instructions})
 }
 
@@ -389,7 +398,7 @@ func (c OptimizationController) readAnalysisState(optimizationId string) (*Analy
 		case "contextual_richness":
 			state.ContextualRichnessCompleted = runCompleted
 		case "conciseness":
-			state.ConsistencyCompleted = runCompleted
+			state.ConcisenessCompleted = runCompleted
 		case "clarity":
 			state.ClarityCompleted = runCompleted
 		case "consistency":
@@ -628,8 +637,10 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 					Error:       err}
 			}
 
-			return &AppResp{Component: c.ComponentBuilder.Review(optimization.OriginalPrompt, optimization.OptimizedPrompt),
-				Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+			if optimization.State == "completed" {
+				return &AppResp{Component: c.ComponentBuilder.Review(optimization.OriginalPrompt, optimization.OptimizedPrompt),
+					Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+			}
 		}
 
 		return &AppResp{Component: c.ComponentBuilder.Loading(id, *state),

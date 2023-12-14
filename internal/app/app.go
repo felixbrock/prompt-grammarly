@@ -27,7 +27,7 @@ type Config struct {
 
 type OpUpdateOpts struct {
 	State           string `json:"state"`
-	OptimizedPrompt []byte `json:"optimized_prompt"`
+	OptimizedPrompt string `json:"optimized_prompt"`
 	ParentId        string `json:"parent_id"`
 }
 

@@ -34,19 +34,15 @@ func (r SuggestionRepo) Insert(suggestions []domain.Suggestion) error {
 }
 
 func (r SuggestionRepo) Update(id string, userFeedback string) error {
-	body, err := json.Marshal(fmt.Sprintf(`{"user_feedback": "%s"}`, userFeedback))
+	body := []byte(fmt.Sprintf(`{"user_feedback": "%s"}`, userFeedback))
 
-	if err != nil {
-		return err
-	}
-
-	_, err = request[domain.Suggestion](reqConfig{
+	_, err := request[domain.Suggestion](reqConfig{
 		Method:    "PATCH",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
 		Body:      body,
 		Headers:   append(r.BaseHeaders, "Content-Type:application/json")},
-		201)
+		204)
 
 	if err != nil {
 		return err
