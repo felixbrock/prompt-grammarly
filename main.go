@@ -62,8 +62,8 @@ func main() {
 	}
 
 	dbHeader := []string{
-		fmt.Sprintf("apikey: %s", config.DBApiKey),
-		fmt.Sprintf("Authorization: Bearer %s", config.DBApiKey)}
+		fmt.Sprintf("apikey:%s", config.DBApiKey),
+		fmt.Sprintf("Authorization:Bearer %s", config.DBApiKey)}
 	dbUrlBase := "https://cllevlrokigwvbbnbfiu.supabase.co/rest/v1"
 
 	optRepo := persistence.OptimizationRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/optimization", dbUrlBase)}
@@ -75,10 +75,10 @@ func main() {
 		fmt.Sprintf("Authorization: Bearer %s", config.OAIApiKey)}}
 
 	repo := app.Repo{
-		OptimizationRepo: optRepo,
-		RunRepo:          runRepo,
-		SuggestionRepo:   suggRepo,
-		OAIRepo:          oaiRepo,
+		OpRepo:   optRepo,
+		RunRepo:  runRepo,
+		SuggRepo: suggRepo,
+		OAIRepo:  oaiRepo,
 	}
 
 	a := app.App{

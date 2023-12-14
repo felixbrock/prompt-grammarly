@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -19,7 +18,10 @@ type reqConfig struct {
 }
 
 func request[T any](config reqConfig, expectedResCode int) (*T, error) {
-	url := fmt.Sprintf("%s?%s", config.Url, strings.Join(config.UrlParams, "&"))
+	url := config.Url
+	if len(config.UrlParams) > 0 {
+		url = fmt.Sprintf("%s?%s", config.Url, strings.Join(config.UrlParams, "&"))
+	}
 	req, err := http.NewRequest(config.Method, url, bytes.NewBuffer(config.Body))
 
 	if err != nil {
@@ -36,13 +38,20 @@ func request[T any](config reqConfig, expectedResCode int) (*T, error) {
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode != expectedResCode {
-		return nil, errors.New("unexpected response status code error")
+		body, _ := app.Read(resp.Body)
+		return nil, fmt.Errorf("unexpected response status code error: %s", body)
+
+		one thread per optimization?????
 	}
 
 	body, err := app.Read(resp.Body)
 
 	if err != nil {
 		return nil, err
+	}
+
+	if len(body) == 0 {
+		return nil, nil
 	}
 
 	var t *T

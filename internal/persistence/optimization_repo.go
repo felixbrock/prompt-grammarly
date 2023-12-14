@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/felixbrock/lemonai/internal/app"
 	"github.com/felixbrock/lemonai/internal/domain"
 )
 
@@ -23,7 +24,7 @@ func (r OptimizationRepo) Insert(optimization domain.Optimization) error {
 		Method:  "POST",
 		Url:     r.BaseUrl,
 		Body:    body,
-		Headers: r.BaseHeaders},
+		Headers: append(r.BaseHeaders, "Content-Type:application/json")},
 		201)
 
 	if err != nil {
@@ -33,8 +34,8 @@ func (r OptimizationRepo) Insert(optimization domain.Optimization) error {
 	return nil
 }
 
-func (r OptimizationRepo) Update(id string, state string, optimizedPrompt []byte) error {
-	body, err := json.Marshal(fmt.Sprintf(`{"state": "%s", "optimized_prompt": "%s"}`, state, optimizedPrompt))
+func (r OptimizationRepo) Update(id string, opts app.OpUpdateOpts) error {
+	body, err := json.Marshal(opts)
 
 	if err != nil {
 		return err
@@ -45,7 +46,7 @@ func (r OptimizationRepo) Update(id string, state string, optimizedPrompt []byte
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
 		Body:      body,
-		Headers:   r.BaseHeaders},
+		Headers:   append(r.BaseHeaders, "Content-Type:application/json")},
 		201)
 
 	if err != nil {

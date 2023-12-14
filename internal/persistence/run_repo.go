@@ -24,7 +24,7 @@ func (r RunRepo) Insert(run domain.Run) error {
 		Method:  "POST",
 		Url:     r.BaseUrl,
 		Body:    body,
-		Headers: r.BaseHeaders},
+		Headers: append(r.BaseHeaders, "Content-Type:application/json")},
 		201)
 
 	if err != nil {
@@ -46,7 +46,7 @@ func (r RunRepo) Update(id string, state string) error {
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
 		Body:      body,
-		Headers:   r.BaseHeaders},
+		Headers:   append(r.BaseHeaders, "Content-Type:application/json")},
 		201)
 
 	if err != nil {

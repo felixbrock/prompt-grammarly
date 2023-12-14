@@ -26,6 +26,7 @@ templ actionBar(buttons []button) {
  				else
  				if buttons[i].HxConfig.Method == "POST" {
 					hx-post={ buttons[i].HxConfig.Endpoint }
+					hx-ext="json-enc"
 				}
  				if buttons[i].HxConfig.Include != "" {
 					hx-include={ buttons[i].HxConfig.Include }
@@ -73,18 +74,19 @@ templ DraftModeEditor() {
 		@editorWindow("prompt", "Your Prompt", "", true)
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimizations", Method: "POST", Target: "#editor", Include: "#instructions"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimizations", Method: "POST", Target: "#editor", Include: "#instructions, #prompt"}}})
 	</div>
 }
 
-templ EditModeEditor(original string, optimized string, instructions string, suggestions *[]domain.Suggestion) {
+templ EditModeEditor(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) {
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
 	<div class="h-3/20 w-full pb-4">
 		@editorWindow("instructions", "Custom Optimization Instructions", instructions,  true)
 	</div>
+	<div display:none name="parent_id" id="parentid">{ id }</div>
 	<div class="h-7/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("original", "Your Prompt", original, true)
+		@editorWindow("prompt", "Your Prompt", original, true)
 		@editorWindow("optimized", "Optimized Prompt", optimized, false)
 	</div>
 	<div class="h-8/20 pb-4">
@@ -97,7 +99,7 @@ templ EditModeEditor(original string, optimized string, instructions string, sug
 		}
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimize", Method: "POST", Target: "#editor"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimize", Method: "POST", Target: "#editor", Include:  "#instructions, #prompt, #parent_id"}}})
 	</div>
 }
 

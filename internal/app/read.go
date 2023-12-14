@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,7 +11,7 @@ func Read(reader io.ReadCloser) ([]byte, error) {
 	var err error
 
 	defer func() {
-		err = reader.Close()
+		err = (reader).Close()
 		if err != nil {
 			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 		}
@@ -23,8 +22,6 @@ func Read(reader io.ReadCloser) ([]byte, error) {
 
 	if err != nil {
 		return nil, err
-	} else if len(content) == 0 {
-		return nil, errors.New("no reader content error")
 	}
 
 	return content, nil

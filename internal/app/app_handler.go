@@ -33,10 +33,15 @@ func (h AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if resp.Error != nil {
 		slog.Error(fmt.Sprintf(`Error occured: %s`, resp.Error.Error()))
-		http.Error(w, resp.Message, resp.Code)
 	}
 
 	if resp.Code != 0 {
+
+		// Overwrite error code to allow for component rendering on client
+		if resp.Code != 200 && resp.Code != 201 {
+			resp.Code = 200
+		}
+
 		w.WriteHeader(resp.Code)
 	}
 	w.Header().Add("Content-Type", resp.ContentType)

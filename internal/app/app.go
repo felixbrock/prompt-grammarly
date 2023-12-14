@@ -13,7 +13,7 @@ type ComponentBuilder struct {
 	Index   func() templ.Component
 	App     func() templ.Component
 	Draft   func() templ.Component
-	Edit    func(original string, optimized string, instructions string, suggestions *[]domain.Suggestion) templ.Component
+	Edit    func(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) templ.Component
 	Review  func(original string, optimized string) templ.Component
 	Loading func(optimizationId string, state AnalysisState) templ.Component
 	Error   func(code string, title string, msg string) templ.Component
@@ -25,9 +25,15 @@ type Config struct {
 	DBApiKey  string `json:"DB_API_KEY"`
 }
 
-type optimizationRepo interface {
+type OpUpdateOpts struct {
+	State           string `json:"state"`
+	OptimizedPrompt []byte `json:"optimized_prompt"`
+	ParentId        string `json:"parent_id"`
+}
+
+type opRepo interface {
 	Insert(optimization domain.Optimization) error
-	Update(id string, state string, optimizedPrompt []byte) error
+	Update(id string, opts OpUpdateOpts) error
 	Read(id string) (*domain.Optimization, error)
 }
 
@@ -41,14 +47,14 @@ type runRepo interface {
 	Read(filter RunReadFilter) (*[]domain.Run, error)
 }
 
-type SuggestionReadFilter struct {
+type SuggReadFilter struct {
 	OptimizationId string
 }
 
-type suggestionRepo interface {
+type suggRepo interface {
 	Insert(suggestions []domain.Suggestion) error
 	Update(id string, userFeedback string) error
-	Read(filter SuggestionReadFilter) (*[]domain.Suggestion, error)
+	Read(filter SuggReadFilter) (*[]domain.Suggestion, error)
 }
 
 type oaiRepo interface {
@@ -61,10 +67,10 @@ type oaiRepo interface {
 }
 
 type Repo struct {
-	OptimizationRepo optimizationRepo
-	RunRepo          runRepo
-	SuggestionRepo   suggestionRepo
-	OAIRepo          oaiRepo
+	OpRepo   opRepo
+	RunRepo  runRepo
+	SuggRepo suggRepo
+	OAIRepo  oaiRepo
 }
 
 type App struct {

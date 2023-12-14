@@ -61,7 +61,7 @@ func (r OpenAIRepo) PostMsg(proto app.MessageProto, threadId string) error {
 }
 
 func (r OpenAIRepo) PostThread() (string, error) {
-	thread, err := request[app.OAIThread](reqConfig{Method: "POST", Url: "https://api.openai.creqConfigom/v1/threads", Headers: r.BaseHeaders}, 200)
+	thread, err := request[app.OAIThread](reqConfig{Method: "POST", Url: "https://api.openai.com/v1/threads", Headers: r.BaseHeaders}, 200)
 
 	if err != nil {
 		return "", err

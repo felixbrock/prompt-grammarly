@@ -10,3 +10,6 @@ else
     echo "Failed to transpile Tailwind CSS. Aborting..."
     exit 1
 fi
+
+go build -o ./tmp/main .
+echo "Built go binary"

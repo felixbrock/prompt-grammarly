@@ -24,7 +24,7 @@ func (r SuggestionRepo) Insert(suggestions []domain.Suggestion) error {
 		Method:  "POST",
 		Url:     r.BaseUrl,
 		Body:    body,
-		Headers: r.BaseHeaders}, 201)
+		Headers: append(r.BaseHeaders, "Content-Type:application/json")}, 201)
 
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func (r SuggestionRepo) Update(id string, userFeedback string) error {
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
 		Body:      body,
-		Headers:   r.BaseHeaders},
+		Headers:   append(r.BaseHeaders, "Content-Type:application/json")},
 		201)
 
 	if err != nil {
@@ -55,7 +55,7 @@ func (r SuggestionRepo) Update(id string, userFeedback string) error {
 	return nil
 }
 
-func (r SuggestionRepo) Read(filter app.SuggestionReadFilter) (*[]domain.Suggestion, error) {
+func (r SuggestionRepo) Read(filter app.SuggReadFilter) (*[]domain.Suggestion, error) {
 	records, err := request[[]domain.Suggestion](reqConfig{
 		Method:    "GET",
 		Url:       r.BaseUrl,
