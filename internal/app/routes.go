@@ -35,6 +35,12 @@ type optimizationReq struct {
 	ParentId       string `json:"parent_id"`
 }
 
+// type suggFeedbReq struct {
+// 	FType  string `json:"feedb_type"`
+// 	FVal   int16  `json:"feedb_val"`
+// 	SuggId string `json:"sugg_id"`
+// }
+
 type oaiSuggestion struct {
 	Suggestion string `json:"new"`
 	Reasoning  string `json:"reasoning"`
@@ -575,7 +581,7 @@ func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Reques
 	case "GET":
 		id := r.URL.Query().Get("id")
 
-		optimization, err := c.Repo.OpRepo.Read(id)
+		op, err := c.Repo.OpRepo.Read(id)
 
 		errCtx500 := get500()
 		if err != nil {
@@ -586,7 +592,7 @@ func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Reques
 				Error:       err}
 		}
 
-		return &AppResp{Component: c.ComponentBuilder.Review(optimization.OriginalPrompt, optimization.OptimizedPrompt),
+		return &AppResp{Component: c.ComponentBuilder.Review(op.Id, op.OriginalPrompt, op.OptimizedPrompt),
 			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
 		errCtx := get405()
@@ -627,7 +633,7 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 		}
 
 		if state.Completed() {
-			optimization, err := c.Repo.OpRepo.Read(id)
+			op, err := c.Repo.OpRepo.Read(id)
 
 			if err != nil {
 				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx500.Code), errCtx500.Title, errCtx500.Msg),
@@ -637,8 +643,8 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 					Error:       err}
 			}
 
-			if optimization.State == "completed" {
-				return &AppResp{Component: c.ComponentBuilder.Review(optimization.OriginalPrompt, optimization.OptimizedPrompt),
+			if op.State == "completed" {
+				return &AppResp{Component: c.ComponentBuilder.Review(op.Id, op.OriginalPrompt, op.OptimizedPrompt),
 					Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 			}
 		}
@@ -676,3 +682,53 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 	}
 
 }
+
+// type FeedbackController struct {
+// 	ComponentBuilder *ComponentBuilder
+// 	Repo             *Repo
+// }
+
+// func (c FeedbackController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+// 	switch r.Method {
+// 	case "POST":
+// 		bBody, err := Read(r.Body)
+
+// 		if err != nil {
+// 			errCtx := get400()
+// 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
+// 				Code:        errCtx.Code,
+// 				Message:     errCtx.Msg,
+// 				ContentType: "text/html",
+// 				Error:       err}
+// 		}
+
+// 		body, err := ReadJSON[suggFeedbReq](bBody)
+
+// 		if err != nil {
+// 			errCtx := get400()
+// 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
+// 				Code:        errCtx.Code,
+// 				Message:     errCtx.Msg,
+// 				ContentType: "text/html",
+// 				Error:       err}
+// 		}
+
+// 		err = c.Repo.SuggRepo.Update(body.SuggId, body.FVal)
+
+// 		if err != nil {
+// 			errCtx := get500()
+// 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
+// 				Code:        errCtx.Code,
+// 				Message:     errCtx.Msg,
+// 				ContentType: "text/html",
+// 				Error:       err}
+// 		}
+
+// 		return &AppResp{Component: c.ComponentBuilder.FeedbackBtn(uuid.New().String(), body.FType, int(body.FVal), body.SuggId), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+// 	default:
+// 		errCtx := get405()
+// 		err := errors.New("method not allowed")
+// 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
+// 			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+// 	}
+// }

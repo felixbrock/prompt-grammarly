@@ -68,7 +68,7 @@ templ editorWindow(inputId string, title string, prompt string, enabled bool) {
 
 templ DraftModeEditor() {
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("instructions", "Custom Optimization Goal", "", true)
+		@editorWindow("instructions", "What's Your Individual Optimization Goal?", "", true)
 	</div>
 	<div class="h-15/20 pb-4">
 		@editorWindow("prompt", "Your Prompt", "", true)
@@ -82,9 +82,9 @@ templ EditModeEditor(id string, original string, optimized string, instructions 
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("instructions", "Custom Optimization Instructions", instructions,  true)
+		@editorWindow("instructions", "What's Your Individual Optimization Goal?", instructions,  true)
 	</div>
-	<div display:none name="parent_id" id="parentid">{ id }</div>
+	<input class="hidden" name="parent_id" id="parent_id" value={ id }/>
 	<div class="h-7/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 		@editorWindow("prompt", "Your Prompt", original, true)
 		@editorWindow("optimized", "Optimized Prompt", optimized, false)
@@ -99,16 +99,16 @@ templ EditModeEditor(id string, original string, optimized string, instructions 
 		}
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimize", Method: "POST", Target: "#editor", Include:  "#instructions, #prompt, #parent_id"}}})
+		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimizations", Method: "POST", Target: "#editor", Include:  "#instructions, #prompt, #parent_id"}}})
 	</div>
 }
 
-templ ReviewModeEditor(original string, optimized string) {
+templ ReviewModeEditor(opId string, original string, optimized string) {
 	<div class="h-9/10 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 		@editorWindow("original","Your Prompt",original, false)
 		@editorWindow("optimized","Optimized Prompt",optimized, false)
 	</div>
 	<div class="h-1/10 pb-4">
-		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{Endpoint: "/editor/edit", Method: "POST", Target: "#editor"}}})
+		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{Endpoint:"/editor/edit?optimization_id=" + opId , Method: "GET", Target: "#editor"}}})
 	</div>
 }

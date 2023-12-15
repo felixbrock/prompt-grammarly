@@ -10,13 +10,14 @@ import (
 )
 
 type ComponentBuilder struct {
-	Index   func() templ.Component
-	App     func() templ.Component
-	Draft   func() templ.Component
-	Edit    func(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) templ.Component
-	Review  func(original string, optimized string) templ.Component
-	Loading func(optimizationId string, state AnalysisState) templ.Component
-	Error   func(code string, title string, msg string) templ.Component
+	Index       func() templ.Component
+	App         func() templ.Component
+	Draft       func() templ.Component
+	Edit        func(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) templ.Component
+	Review      func(opId string, original string, optimized string) templ.Component
+	Loading     func(optimizationId string, state AnalysisState) templ.Component
+	Error       func(code string, title string, msg string) templ.Component
+	FeedbackBtn func(btnId string, fType string, fVal int, suggId string) templ.Component
 }
 
 type Config struct {
@@ -53,7 +54,7 @@ type SuggReadFilter struct {
 
 type suggRepo interface {
 	Insert(suggestions []domain.Suggestion) error
-	Update(id string, userFeedback string) error
+	Update(id string, userFeedback int16) error
 	Read(filter SuggReadFilter) (*[]domain.Suggestion, error)
 }
 

@@ -31,9 +31,13 @@ templ Loading(optimizationId string, state app.AnalysisState) {
 			@analysisStateMsg("Conciseness", state.ConcisenessCompleted)
 			@analysisStateMsg("Clarity", state.ClarityCompleted)
 			@analysisStateMsg("Consistency", state.ConsistencyCompleted)
-			if state.Completed() {
+			<div
+ 				if !state.Completed() {
+					class="invisible"
+				}
+			>
 				@optimizationStateMsg()
-			}
+			</div>
 		</div>
 	</div>
 }

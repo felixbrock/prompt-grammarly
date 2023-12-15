@@ -12,20 +12,19 @@ import (
 )
 
 /*
-- Remove credentials from all files (Jack)
 - Check for SQL injection
 - Check for XSS
 - Address prompt injection
 - Block IP addresses: Too many requests
 - Implement feedback logic
 - Implement parent child tracing
-- Connect to frontend (Jack)
 - Remove prompts from code base (.gitignore file)
-- Implement parent Id + Check where id needs to be passed (Jack)
 - update env base and add assistant ids
+- end Goroutine after 1 minute
+- Implement feedback handling
+- Add hints to textfields
 
 - Host (Jack)
-- Make sure db is secure (Jack)
 - Add Posthog
 */
 
@@ -53,13 +52,14 @@ func main() {
 	}
 
 	componentBuilder := app.ComponentBuilder{
-		Index:   component.Index,
-		App:     component.App,
-		Draft:   component.DraftModeEditor,
-		Edit:    component.EditModeEditor,
-		Review:  component.ReviewModeEditor,
-		Loading: component.Loading,
-		Error:   component.Error,
+		Index:       component.Index,
+		App:         component.App,
+		Draft:       component.DraftModeEditor,
+		Edit:        component.EditModeEditor,
+		Review:      component.ReviewModeEditor,
+		Loading:     component.Loading,
+		Error:       component.Error,
+		FeedbackBtn: component.FeedbackBtn,
 	}
 
 	dbHeader := []string{

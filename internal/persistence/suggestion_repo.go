@@ -33,8 +33,8 @@ func (r SuggestionRepo) Insert(suggestions []domain.Suggestion) error {
 	return nil
 }
 
-func (r SuggestionRepo) Update(id string, userFeedback string) error {
-	body := []byte(fmt.Sprintf(`{"user_feedback": "%s"}`, userFeedback))
+func (r SuggestionRepo) Update(id string, userFeedback int16) error {
+	body := []byte(fmt.Sprintf(`{"user_feedback": %d}`, userFeedback))
 
 	_, err := request[domain.Suggestion](reqConfig{
 		Method:    "PATCH",
