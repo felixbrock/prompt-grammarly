@@ -35,12 +35,6 @@ type optimizationReq struct {
 	ParentId       string `json:"parent_id"`
 }
 
-// type suggFeedbReq struct {
-// 	FType  string `json:"feedb_type"`
-// 	FVal   int16  `json:"feedb_val"`
-// 	SuggId string `json:"sugg_id"`
-// }
-
 type oaiSuggestion struct {
 	Suggestion string `json:"new"`
 	Reasoning  string `json:"reasoning"`
@@ -682,53 +676,3 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 	}
 
 }
-
-// type FeedbackController struct {
-// 	ComponentBuilder *ComponentBuilder
-// 	Repo             *Repo
-// }
-
-// func (c FeedbackController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-// 	switch r.Method {
-// 	case "POST":
-// 		bBody, err := Read(r.Body)
-
-// 		if err != nil {
-// 			errCtx := get400()
-// 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-// 				Code:        errCtx.Code,
-// 				Message:     errCtx.Msg,
-// 				ContentType: "text/html",
-// 				Error:       err}
-// 		}
-
-// 		body, err := ReadJSON[suggFeedbReq](bBody)
-
-// 		if err != nil {
-// 			errCtx := get400()
-// 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-// 				Code:        errCtx.Code,
-// 				Message:     errCtx.Msg,
-// 				ContentType: "text/html",
-// 				Error:       err}
-// 		}
-
-// 		err = c.Repo.SuggRepo.Update(body.SuggId, body.FVal)
-
-// 		if err != nil {
-// 			errCtx := get500()
-// 			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-// 				Code:        errCtx.Code,
-// 				Message:     errCtx.Msg,
-// 				ContentType: "text/html",
-// 				Error:       err}
-// 		}
-
-// 		return &AppResp{Component: c.ComponentBuilder.FeedbackBtn(uuid.New().String(), body.FType, int(body.FVal), body.SuggId), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
-// 	default:
-// 		errCtx := get405()
-// 		err := errors.New("method not allowed")
-// 		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-// 			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
-// 	}
-// }

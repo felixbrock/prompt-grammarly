@@ -4,10 +4,6 @@ import (
 	"strings"
 	"github.com/felixbrock/lemonai/internal/domain"
 	"unicode/utf8"
-	"fmt"
-	"errors"
-	"encoding/json"
-	"strconv"
 )
 
 templ suggestionCardField(title string, text string) {
@@ -33,72 +29,11 @@ func formatSuggType(suggType string) string {
 	return strings.Join(words, " ")
 }
 
-const baseStylingFeedbBtn = "relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold  shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-
-func getFBtnBG(fType string, fVal int) string {
-	if fVal == 1 {
-		return "hover:bg-green-300"
-	} else if fVal == -1 {
-		return "hover:bg-red-300"
-	} else if fVal == 0 && fType == "exclude" {
-		return "bg-red-300"
-	} else if fVal == 0 && fType == "double" {
-		return "bg-green-300"
-	} else {
-		panic(errors.New("Invalid feedback type or value"))
-	}
-}
-
-func getNewFVal(fType string, fVal int) int {
-	if fVal == 0 && fType == "exclude" {
-		return -1
-	} else if fVal == 0 && fType == "double" {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-func getEscVals(vals string) string {
-	bVals, err := json.Marshal(vals)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return string(string(bVals))
-}
-
-templ FeedbackBtn(btnId string, fType string, fVal int, suggId string) {
-	<div hx-swap="innerHTML">
-		<input type="hidden" name={ fmt.Sprintf("sugg_id_%s_%s", fType, btnId) } id={ fmt.Sprintf("sugg_id_%s_%s", fType, btnId) } value={ suggId }/>
-		<input type="hidden" name={ fmt.Sprintf("ftype_%s_%s", fType, btnId) } id={ fmt.Sprintf("ftype_%s_%s", fType, btnId) } value={ fType }/>
-		<input type="hidden" name={ fmt.Sprintf("fval_%s_%s", fType, btnId) } id={ fmt.Sprintf("fval_%s_%s", fType, btnId) } value={ strconv.Itoa(fVal) }/>
-		<button
- 			type="button"
- 			id={ btnId }
- 			class={ fmt.Sprintf("%s %s", baseStylingFeedbBtn, getFBtnBG(fType, fVal)) }
- 			hx-get={ fmt.Sprintf("/suggestions/%s", fType) }
- 			hx-trigger="click"
- 			hx-include={ fmt.Sprintf("#sugg_id_%[1]s_%[2]s, #ftype_%[1]s_%[2]s, #fval_%[1]s_%[2]s", fType, btnId) }
-		>
-			if fType == "exclude" {
-				Exclude
-			}
-			if fType == "double" {
-				Double Down
-			}
-		</button>
-	</div>
-}
-
 templ SuggestionCard(sugg domain.Suggestion) {
 	<li class="overflow-hidden grow shrink-0 min-h-max w-full my-2 rounded-xl border border-gray-200 divide-y divide-gray-100">
 		<div class="text-left leading-tight ">
 			<div class="flex flex-row items-center p-2 gap-2 bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500">
 				<h3 class="grow text-gray-900 text-left font-bold ">{ formatSuggType(sugg.Type)  + " Suggestion" }</h3>
-				// @FeedbackBtn(uuid.New().String() , "double", 1, sugg.Id)
-				// @FeedbackBtn(uuid.New().String(),  "exclude" , -1, sugg.Id)
 			</div>
 			<p class="text-sm p-2">{ sugg.Suggestion }</p>
 		</div>

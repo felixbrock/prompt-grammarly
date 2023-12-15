@@ -52,14 +52,13 @@ func main() {
 	}
 
 	componentBuilder := app.ComponentBuilder{
-		Index:       component.Index,
-		App:         component.App,
-		Draft:       component.DraftModeEditor,
-		Edit:        component.EditModeEditor,
-		Review:      component.ReviewModeEditor,
-		Loading:     component.Loading,
-		Error:       component.Error,
-		FeedbackBtn: component.FeedbackBtn,
+		Index:   component.Index,
+		App:     component.App,
+		Draft:   component.DraftModeEditor,
+		Edit:    component.EditModeEditor,
+		Review:  component.ReviewModeEditor,
+		Loading: component.Loading,
+		Error:   component.Error,
 	}
 
 	dbHeader := []string{
