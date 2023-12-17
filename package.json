@@ -1,10 +1,11 @@
 {
-  "dependencies": {
+  "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
-    "tailwindcss": "latest"
+    "tailwindcss": "^3.3.6"
   },
   "scripts": {
     "build": "sh ./scripts/build.sh",
-    "start": "~/go/bin/air -c .air.toml"
+    "dev": "NODE_ENV=dev ~/go/bin/air -c .air.toml",
+    "start": "NODE_ENV=prod go run ."
   }
 }

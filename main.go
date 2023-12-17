@@ -6,9 +6,11 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/felixbrock/lemonai/internal/app"
 	"github.com/felixbrock/lemonai/internal/component"
 	"github.com/felixbrock/lemonai/internal/persistence"
+	_ "go.uber.org/automaxprocs"
 )
 
 /*
@@ -28,8 +30,7 @@ import (
 - Add Posthog
 */
 
-func config() (*app.Config, error) {
-
+func devConfig() (*app.Config, error) {
 	env, err := os.ReadFile("env.json")
 	if err != nil {
 		return nil, err
@@ -43,13 +44,39 @@ func config() (*app.Config, error) {
 	return &config, nil
 }
 
-func main() {
-	config, err := config()
+func devHandler() {
+	config, err := devConfig()
 
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
+
+	baseHandler(config)
+}
+
+func prodConfig() (*app.Config, error) {
+	config := app.Config{
+		Port:      os.Getenv("PORT"),
+		OAIApiKey: os.Getenv("OAI_API_KEY"),
+		DBApiKey:  os.Getenv("DB_API_KEY"),
+	}
+
+	return &config, nil
+}
+
+func prodHandler() {
+	config, err := devConfig()
+
+	if err != nil {
+		slog.Error(err.Error())
+		os.Exit(1)
+	}
+
+	baseHandler(config)
+}
+
+func baseHandler(config *app.Config) {
 
 	componentBuilder := app.ComponentBuilder{
 		Index:   component.Index,
@@ -88,4 +115,18 @@ func main() {
 	}
 
 	a.Start()
+}
+
+func main() {
+	env := os.Getenv("NODE_ENV")
+
+	switch env {
+	case "dev":
+		devHandler()
+	case "prod":
+		lambda.Start(prodHandler)
+	default:
+		slog.Error("NODE_ENV not set")
+		os.Exit(1)
+	}
 }

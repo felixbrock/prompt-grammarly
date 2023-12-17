@@ -1,6 +1,6 @@
 #!/bin/bash
 
-bunx tailwindcss -i ./static/index.css -o ./static/index_transpiled.css
+bunx tailwindcss -i ./style/index.css -o ./static/style/index_transpiled.css
 echo "Transpiled tailwind css"
 
 if [ $? -eq 0 ]; then

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/felixbrock/lemonai/internal/domain"
@@ -21,7 +22,7 @@ type ComponentBuilder struct {
 }
 
 type Config struct {
-	Port      int    `json:"GO_PORT"`
+	Port      string `json:"GO_PORT"`
 	OAIApiKey string `json:"OAI_API_KEY"`
 	DBApiKey  string `json:"DB_API_KEY"`
 }
@@ -81,18 +82,29 @@ type App struct {
 }
 
 func (a App) Start() {
-	http.Handle("/static/",
+
+	mux := http.NewServeMux()
+
+	mux.Handle("/static/",
 		http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	http.Handle("/", AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}})
-	http.Handle("/app", AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}})
-	http.Handle("/editor/draft", AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}})
-	http.Handle("/editor/edit", AppHandler{EditModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
-	http.Handle("/editor/review", AppHandler{ReviewModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
-	http.Handle("/optimizations", AppHandler{OptimizationController{
+	mux.Handle("/", AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}})
+	mux.Handle("/app", AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}})
+	mux.Handle("/editor/draft", AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}})
+	mux.Handle("/editor/edit", AppHandler{EditModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
+	mux.Handle("/editor/review", AppHandler{ReviewModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
+	mux.Handle("/optimizations", AppHandler{OptimizationController{
 		ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo,
 	}})
 
-	log.Printf("App running on %d...", a.Config.Port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", a.Config.Port), nil))
+	s := &http.Server{
+		Addr:              fmt.Sprintf(":%s", a.Config.Port),
+		ReadHeaderTimeout: 500 * time.Millisecond,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		Handler:           http.TimeoutHandler(mux, time.Second, "foo"),
+	}
+
+	log.Fatal(s.ListenAndServe())
+	log.Printf("App running on %s...", a.Config.Port)
 }
