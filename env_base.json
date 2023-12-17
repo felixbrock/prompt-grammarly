@@ -1,3 +1,4 @@
 {
-  "GOPORT": 8000
+  "GOPORT": 8000,
+  "ENV": "dev"
 }

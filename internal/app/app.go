@@ -82,7 +82,6 @@ type App struct {
 }
 
 func (a App) Start() {
-
 	mux := http.NewServeMux()
 
 	mux.Handle("/static/",
@@ -102,7 +101,7 @@ func (a App) Start() {
 		ReadHeaderTimeout: 500 * time.Millisecond,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      5 * time.Second,
-		Handler:           http.TimeoutHandler(mux, time.Second, "foo"),
+		Handler:           http.TimeoutHandler(mux, time.Second, "Timeout of server handler"),
 	}
 
 	log.Fatal(s.ListenAndServe())

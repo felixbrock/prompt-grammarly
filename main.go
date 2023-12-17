@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/felixbrock/lemonai/internal/app"
 	"github.com/felixbrock/lemonai/internal/component"
 	"github.com/felixbrock/lemonai/internal/persistence"
@@ -66,7 +65,7 @@ func prodConfig() (*app.Config, error) {
 }
 
 func prodHandler() {
-	config, err := devConfig()
+	config, err := prodConfig()
 
 	if err != nil {
 		slog.Error(err.Error())
@@ -118,15 +117,18 @@ func baseHandler(config *app.Config) {
 }
 
 func main() {
-	env := os.Getenv("NODE_ENV")
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "dev"
+	}
 
 	switch env {
 	case "dev":
 		devHandler()
 	case "prod":
-		lambda.Start(prodHandler)
+		prodHandler()
 	default:
-		slog.Error("NODE_ENV not set")
+		slog.Error("ENV not set")
 		os.Exit(1)
 	}
 }
