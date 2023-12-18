@@ -8,6 +8,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/felixbrock/lemonai/internal/domain"
+	"golang.org/x/time/rate"
 )
 
 type ComponentBuilder struct {
@@ -81,20 +82,34 @@ type App struct {
 	Config           Config
 }
 
+func (a App) rateLimit(limiter *rate.Limiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !limiter.Allow() {
+				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func (a App) Start() {
+	limiter := rate.NewLimiter(5, 5)
+
 	mux := http.NewServeMux()
 
 	mux.Handle("/static/",
 		http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	mux.Handle("/", AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}})
-	mux.Handle("/app", AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}})
-	mux.Handle("/editor/draft", AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}})
-	mux.Handle("/editor/edit", AppHandler{EditModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
-	mux.Handle("/editor/review", AppHandler{ReviewModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}})
-	mux.Handle("/optimizations", AppHandler{OptimizationController{
+	mux.Handle("/", a.rateLimit(limiter)(AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}}))
+	mux.Handle("/app", a.rateLimit(limiter)(AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}}))
+	mux.Handle("/editor/draft", a.rateLimit(limiter)(AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}}))
+	mux.Handle("/editor/edit", a.rateLimit(limiter)(AppHandler{EditModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}}))
+	mux.Handle("/editor/review", a.rateLimit(limiter)(AppHandler{ReviewModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}}))
+	mux.Handle("/optimizations", a.rateLimit(limiter)(AppHandler{OptimizationController{
 		ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo,
-	}})
+	}}))
 
 	s := &http.Server{
 		Addr:              fmt.Sprintf(":%s", a.Config.Port),

@@ -15,7 +15,6 @@ import (
 /*
 - Check for SQL injection
 - Check for XSS
-- Address prompt injection
 - Block IP addresses: Too many requests
 
 - Implement feedback logic
@@ -48,8 +47,10 @@ import (
 
 - include suggestions in fields
 
-- Host (Jack)
 - Add Posthog
+
+LATER:
+- Address prompt injection
 */
 
 func devConfig() (*app.Config, error) {

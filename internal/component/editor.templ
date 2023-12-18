@@ -68,7 +68,7 @@ templ editorWindow(inputId string, title string, prompt string, enabled bool) {
 
 templ DraftModeEditor() {
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("instructions", "What's Your Individual Optimization Goal?", "", true)
+		@editorWindow("instructions", "What's Your Prompt Optimization Goal? (Optional)", "", true)
 	</div>
 	<div class="h-15/20 pb-4">
 		@editorWindow("prompt", "Your Prompt", "", true)
