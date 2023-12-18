@@ -17,13 +17,36 @@ import (
 - Check for XSS
 - Address prompt injection
 - Block IP addresses: Too many requests
+
 - Implement feedback logic
-- Implement parent child tracing
+
+- Introduce Posthog
+- Add copy button
+
+- Dark mode
+
+- drop button
+- Optimize button to regenarate
+
+- Number for suggestion
+
+
+
+
 - Remove prompts from code base (.gitignore file)
 - update env base and add assistant ids
+
 - end Goroutine after 1 minute
+
 - Implement feedback handling
+
 - Add hints to textfields
+
+- make custom "optional"
+
+- add concurrency
+
+- include suggestions in fields
 
 - Host (Jack)
 - Add Posthog

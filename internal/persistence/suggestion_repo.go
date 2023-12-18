@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -20,7 +21,7 @@ func (r SuggestionRepo) Insert(suggestions []domain.Suggestion) error {
 		return err
 	}
 
-	_, err = request[domain.Suggestion](reqConfig{
+	_, err = request[domain.Suggestion](context.TODO(), reqConfig{
 		Method:  "POST",
 		Url:     r.BaseUrl,
 		Body:    body,
@@ -36,7 +37,7 @@ func (r SuggestionRepo) Insert(suggestions []domain.Suggestion) error {
 func (r SuggestionRepo) Update(id string, userFeedback int16) error {
 	body := []byte(fmt.Sprintf(`{"user_feedback": %d}`, userFeedback))
 
-	_, err := request[domain.Suggestion](reqConfig{
+	_, err := request[domain.Suggestion](context.TODO(), reqConfig{
 		Method:    "PATCH",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
@@ -52,7 +53,7 @@ func (r SuggestionRepo) Update(id string, userFeedback int16) error {
 }
 
 func (r SuggestionRepo) Read(filter app.SuggReadFilter) (*[]domain.Suggestion, error) {
-	records, err := request[[]domain.Suggestion](reqConfig{
+	records, err := request[[]domain.Suggestion](context.TODO(), reqConfig{
 		Method:    "GET",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("optimization_id=eq.%s", filter.OptimizationId)},

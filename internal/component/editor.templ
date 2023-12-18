@@ -19,7 +19,7 @@ templ actionBar(buttons []button) {
 		for i := 0; i < len(buttons); i++ {
 			<button
  				type="button"
- 				class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+ 				class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold  shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
  				if buttons[i].HxConfig.Method == "GET" {
 					hx-get={ buttons[i].HxConfig.Endpoint }
 				}
@@ -43,7 +43,7 @@ templ actionBar(buttons []button) {
 templ sectionWrapper(title string) {
 	<section aria-labelledby={ "section-" + title } class="h-full">
 		<h2 class="sr-only" id={ "section-" + title }>{ title }</h2>
-		<div class="h-full overflow-hidden rounded-lg bg-white shadow p-4">
+		<div class="h-full overflow-hidden rounded-lg bg-black shadow p-4">
 			{ children... }
 		</div>
 	</section>
@@ -55,7 +55,7 @@ templ editorWindow(inputId string, title string, prompt string, enabled bool) {
 			<div class="h-6">
 				<div class="h-full -ml-4 -mt-2 flex flex-wrap items-center justify-between sm:flex-nowrap">
 					<div class="ml-4 mt-2">
-						<h3 class="text-base font-semibold leading-6 text-gray-900">{ title }</h3>
+						<h3 class="text-base font-semibold leading-6">{ title }</h3>
 					</div>
 				</div>
 			</div>

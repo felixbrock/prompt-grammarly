@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -20,7 +21,7 @@ func (r RunRepo) Insert(run domain.Run) error {
 		return err
 	}
 
-	_, err = request[domain.Run](reqConfig{
+	_, err = request[domain.Run](context.TODO(), reqConfig{
 		Method:  "POST",
 		Url:     r.BaseUrl,
 		Body:    body,
@@ -37,7 +38,7 @@ func (r RunRepo) Insert(run domain.Run) error {
 func (r RunRepo) Update(id string, state string) error {
 	body := []byte(fmt.Sprintf(`{"state": "%s"}`, state))
 
-	_, err := request[domain.Run](reqConfig{
+	_, err := request[domain.Run](context.TODO(), reqConfig{
 		Method:    "PATCH",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
@@ -53,7 +54,7 @@ func (r RunRepo) Update(id string, state string) error {
 }
 
 func (r RunRepo) Read(filter app.RunReadFilter) (*[]domain.Run, error) {
-	records, err := request[[]domain.Run](reqConfig{
+	records, err := request[[]domain.Run](context.TODO(), reqConfig{
 		Method:    "GET",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("optimization_id=eq.%s", filter.OptimizationId)},

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,12 +18,12 @@ type reqConfig struct {
 	Body      []byte
 }
 
-func request[T any](config reqConfig, expectedResCode int) (*T, error) {
+func request[T any](ctx context.Context, config reqConfig, expectedResCode int) (*T, error) {
 	url := config.Url
 	if len(config.UrlParams) > 0 {
 		url = fmt.Sprintf("%s?%s", config.Url, strings.Join(config.UrlParams, "&"))
 	}
-	req, err := http.NewRequest(config.Method, url, bytes.NewBuffer(config.Body))
+	req, err := http.NewRequestWithContext(ctx, config.Method, url, bytes.NewBuffer(config.Body))
 
 	if err != nil {
 		return nil, err

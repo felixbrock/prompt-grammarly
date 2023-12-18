@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,7 +22,7 @@ func (r OptimizationRepo) Insert(optimization domain.Optimization) error {
 		return err
 	}
 
-	_, err = request[domain.Optimization](reqConfig{
+	_, err = request[domain.Optimization](context.TODO(), reqConfig{
 		Method:  "POST",
 		Url:     r.BaseUrl,
 		Body:    body,
@@ -42,7 +43,7 @@ func (r OptimizationRepo) Update(id string, opts app.OpUpdateOpts) error {
 		return err
 	}
 
-	_, err = request[domain.Optimization](reqConfig{
+	_, err = request[domain.Optimization](context.TODO(), reqConfig{
 		Method:    "PATCH",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},
@@ -58,7 +59,7 @@ func (r OptimizationRepo) Update(id string, opts app.OpUpdateOpts) error {
 }
 
 func (r OptimizationRepo) Read(id string) (*domain.Optimization, error) {
-	records, err := request[[]domain.Optimization](reqConfig{
+	records, err := request[[]domain.Optimization](context.TODO(), reqConfig{
 		Method:    "GET",
 		Url:       r.BaseUrl,
 		UrlParams: []string{fmt.Sprintf("id=eq.%s", id)},

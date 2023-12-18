@@ -26,7 +26,7 @@ templ main() {
 	<main class="h-[calc(100vh-5rem)] -mt-24">
 		<div class="h-full mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
 			<h1 class="sr-only">Lemonai Prompt Optimizer</h1>
-			<div class="h-full" id="editor" name="editor">
+			<div class="h-full " id="editor" name="editor">
 				@DraftModeEditor()
 			</div>
 		</div>
@@ -34,7 +34,7 @@ templ main() {
 }
 
 templ App() {
-	<div class="flex flex-col h-screen bg-gray-100">
+	<div class="flex flex-col h-screen bg-neutral-800 text-white">
 		@header()
 		@main()
 	</div>

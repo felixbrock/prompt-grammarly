@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,13 +89,27 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 		return nil, err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
 	slog.Info(fmt.Sprintf("Running %s analysis...\n", assistant.Name))
-	for entity.Status != "completed" {
-		entity, err = c.Repo.OAIRepo.GetRun(threadId, entity.Id)
-		if err != nil {
-			return nil, err
+	completed := false
+	for !completed {
+		select {
+		case <-ctx.Done():
+			slog.Warn(fmt.Sprintf("Assistant %s run timed out. Ignoring run...", assistant.Name))
+			return make([]byte, 0), nil
+		default:
+			entity, err = c.Repo.OAIRepo.GetRun(threadId, entity.Id)
+
+			if err != nil {
+				return nil, err
+			} else if entity.Status == "completed" {
+				completed = true
+			}
+
+			time.Sleep(time.Second)
 		}
-		time.Sleep(1000)
 	}
 
 	var msgs *[]OAIMessage
@@ -255,10 +270,18 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 
 	if err != nil {
 		return nil, err
+	} else if len(msg) == 0 {
+		// handling timed out assistant runs
+		return make([]oaiSuggestion, 0), nil
 	}
 
 	var suggestions *[]oaiSuggestion
 	suggestions, err = ReadJSON[[]oaiSuggestion](msg)
+
+	if err != nil {
+		slog.Warn(fmt.Sprintf("Assistant %s produced unparseable JSON suggestions. Ignoring suggestions...", targetAssistant.Name))
+		return make([]oaiSuggestion, 0), nil
+	}
 
 	suggestionRecords := make([]domain.Suggestion, len(*suggestions))
 	for i := 0; i < len(*suggestions); i++ {
@@ -299,7 +322,7 @@ func (c OptimizationController) optimize(opId string, parentId string, base opti
 		go func(id int) {
 			defer wg.Done()
 
-			threadId, err := c.Repo.OAIRepo.PostThread()
+			thId, err := c.Repo.OAIRepo.PostThread()
 
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -307,13 +330,13 @@ func (c OptimizationController) optimize(opId string, parentId string, base opti
 			}
 
 			defer func() {
-				err = c.Repo.OAIRepo.DeleteThread(threadId)
+				err = c.Repo.OAIRepo.DeleteThread(thId)
 				if err != nil {
 					slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
 				}
 			}()
 
-			suggestions, err := c.suggest(opId, threadId, base, assistants[id])
+			suggestions, err := c.suggest(opId, thId, base, assistants[id])
 
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -481,10 +504,10 @@ func (c IndexController) Handle(w http.ResponseWriter, r *http.Request) *AppResp
 	case "GET":
 		return &AppResp{Component: c.ComponentBuilder.Index(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
-		errCtx := get405()
+		errConfig := get405()
 		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 	}
 }
 
@@ -497,10 +520,10 @@ func (c AppController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
 	case "GET":
 		return &AppResp{Component: c.ComponentBuilder.App(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
-		errCtx := get405()
+		errConfig := get405()
 		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 	}
 }
 
@@ -513,10 +536,10 @@ func (c DraftModeEditorController) Handle(w http.ResponseWriter, r *http.Request
 	case "GET":
 		return &AppResp{Component: c.ComponentBuilder.Draft(), Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
-		errCtx := get405()
+		errConfig := get405()
 		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 
 	}
 }
@@ -532,19 +555,19 @@ func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request)
 		id := r.URL.Query().Get("optimization_id")
 
 		if id == "" {
-			errCtx := get400()
+			errConfig := get400()
 			err := errors.New("missing optimization_id query parameter")
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-				Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+				Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 		}
 
 		runData, err := c.readOptimizationRun(id)
 
 		if err != nil {
-			errCtx := get500()
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-				Code:        errCtx.Code,
-				Message:     errCtx.Msg,
+			errConfig := get500()
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+				Code:        errConfig.Code,
+				Message:     errConfig.Msg,
 				ContentType: "text/html",
 				Error:       err}
 		}
@@ -557,10 +580,10 @@ func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request)
 			runData.suggestions),
 			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
-		errCtx := get405()
+		errConfig := get405()
 		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 
 	}
 }
@@ -577,11 +600,11 @@ func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Reques
 
 		op, err := c.Repo.OpRepo.Read(id)
 
-		errCtx500 := get500()
+		errConfig500 := get500()
 		if err != nil {
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx500.Code), errCtx500.Title, errCtx500.Msg),
-				Code:        errCtx500.Code,
-				Message:     errCtx500.Msg,
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
+				Code:        errConfig500.Code,
+				Message:     errConfig500.Msg,
 				ContentType: "text/html",
 				Error:       err}
 		}
@@ -589,10 +612,10 @@ func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Reques
 		return &AppResp{Component: c.ComponentBuilder.Review(op.Id, op.OriginalPrompt, op.OptimizedPrompt),
 			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
-		errCtx := get405()
+		errConfig := get405()
 		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 
 	}
 }
@@ -603,7 +626,7 @@ type OptimizationController struct {
 }
 
 func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	errCtx400 := get400()
+	errConfig400 := get400()
 
 	switch r.Method {
 	case "GET":
@@ -611,17 +634,17 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 
 		if id == "" {
 			err := errors.New("missing id query parameter")
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx400.Code), errCtx400.Title, errCtx400.Msg),
-				Code: errCtx400.Code, Message: errCtx400.Msg, ContentType: "text/html", Error: err}
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig400.Code), errConfig400.Title, errConfig400.Msg),
+				Code: errConfig400.Code, Message: errConfig400.Msg, ContentType: "text/html", Error: err}
 		}
 
 		state, err := c.readAnalysisState(id)
 
-		errCtx500 := get500()
+		errConfig500 := get500()
 		if err != nil {
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx500.Code), errCtx500.Title, errCtx500.Msg),
-				Code:        errCtx500.Code,
-				Message:     errCtx500.Msg,
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
+				Code:        errConfig500.Code,
+				Message:     errConfig500.Msg,
 				ContentType: "text/html",
 				Error:       err}
 		}
@@ -630,9 +653,9 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 			op, err := c.Repo.OpRepo.Read(id)
 
 			if err != nil {
-				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx500.Code), errCtx500.Title, errCtx500.Msg),
-					Code:        errCtx500.Code,
-					Message:     errCtx500.Msg,
+				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
+					Code:        errConfig500.Code,
+					Message:     errConfig500.Msg,
 					ContentType: "text/html",
 					Error:       err}
 			}
@@ -651,9 +674,9 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 		body, err := Read(r.Body)
 
 		if err != nil {
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx400.Code), errCtx400.Title, errCtx400.Msg),
-				Code:        errCtx400.Code,
-				Message:     errCtx400.Msg,
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig400.Code), errConfig400.Title, errConfig400.Msg),
+				Code:        errConfig400.Code,
+				Message:     errConfig400.Msg,
 				ContentType: "text/html",
 				Error:       err}
 		}
@@ -668,10 +691,10 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 			ConsistencyCompleted:        false}),
 			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	default:
-		errCtx := get405()
+		errConfig := get405()
 		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errCtx.Code), errCtx.Title, errCtx.Msg),
-			Code: errCtx.Code, Message: errCtx.Msg, ContentType: "text/html", Error: err}
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 
 	}
 
