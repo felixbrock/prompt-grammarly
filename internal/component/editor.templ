@@ -23,7 +23,7 @@ templ actionBar(buttons []actionButton) {
 		for i := 0; i < len(buttons); i++ {
 			<button
  				type="button"
- 				class="relative inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold  shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+ 				class="relative inline-flex items-center rounded-md bg-black text-white px-3 py-2 text-sm font-semibold  shadow-sm hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
  				if buttons[i].HxConfig.Method == "GET" {
 					hx-get={ buttons[i].HxConfig.Endpoint }
 				}
@@ -54,8 +54,7 @@ templ sectionWrapper(title string) {
 }
 
 type editorBtn struct {
-	IconSrc  string
-	IconAlt  string
+	SvgPath  string
 	OnClick  string
 	HxConfig hxConfig
 }
@@ -71,15 +70,16 @@ templ editorWindow( title string, btns []editorBtn, textFieldArgs TextFieldArgs)
 					for i := 0; i < len(btns); i++ {
 						<button
  							type="button"
- 							class="h-fit w-fit p-1 flex items-center justify-center bg-neutral- rounded-full text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+ 							class="h-fit w-fit p-1 flex items-center justify-center bg-neutral- rounded-full bg-black text-white shadow-sm fill-white hover:fill-black hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
  							OnClick={ btns[i].OnClick }
  							if btns[i].HxConfig.Method == "POST" {
 								hx-post={ btns[i].HxConfig.Endpoint }
 								hx-ext="json-enc"
 							}
+ 							hx-swap="none"
  							hx-trigger="click"
 						>
-							<img src={ btns[i].IconSrc } alt={ btns[i].IconAlt }/>
+							<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d={ btns[i].SvgPath }></path></svg>
 						</button>
 					}
 				</div>
@@ -123,9 +123,8 @@ templ EditModeEditor(id string, original string, optimized string, instructions 
 		@editorWindow(
 			"Optimized Prompt",  
 			[]editorBtn{{
-				IconSrc: "/static/icons/copy.svg",
-				IconAlt: "Copy",
-				OnClick: "copyText()",
+				SvgPath: "M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z",
+				OnClick: "toClipboard()",
 				HxConfig: hxConfig{Endpoint: fmt.Sprintf("/captures?event_type=%s&optimization_id=%s", "user_copied", id) , Method: "POST"}}},
 			TextFieldArgs{ Id: "optimized", Prompt: optimized, Placeholder: "", Enabled: false})
 	</div>

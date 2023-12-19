@@ -101,7 +101,7 @@ func (a App) rateLimit(limiter *rate.Limiter) func(http.Handler) http.Handler {
 }
 
 func (a App) registerEndpoints(h *http.ServeMux) {
-	limiter := rate.NewLimiter(3, 3)
+	limiter := rate.NewLimiter(2, 2)
 
 	h.Handle("/static/",
 		http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))

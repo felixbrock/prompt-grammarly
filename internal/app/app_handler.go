@@ -45,6 +45,11 @@ func (h AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(resp.Code)
 	}
 	w.Header().Add("Content-Type", resp.ContentType)
+
+	if resp.Component == nil {
+		return
+	}
+
 	err := resp.Component.Render(r.Context(), w)
 
 	if err != nil {

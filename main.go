@@ -13,9 +13,8 @@ import (
 )
 
 /*
-- Increase oai bill
-- Upgrade to paid plan
-- Introduce Posthog
+- Increase oai cost threshold
+- Upgrade to render.com paid plan
 - Clean up Github
 
 LATER:
