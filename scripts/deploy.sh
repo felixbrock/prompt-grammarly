@@ -9,6 +9,6 @@ sudo docker images --format '{{.Repository}}:{{.Tag}}' | grep 'lemonai' | xargs 
 
 sudo docker build -t lemonai .
 
-imageName="public.ecr.aws/q5j1a1q7/lemonai:latest"
+imageName="$1"
 sudo docker tag lemonai:latest $imageName
 sudo docker push $imageName

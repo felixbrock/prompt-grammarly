@@ -22,11 +22,12 @@ type ComponentBuilder struct {
 }
 
 type Config struct {
+	Env       string `json:"Env"`
 	Port      string `json:"GO_PORT"`
 	DBApiKey  string `json:"DB_API_KEY"`
+	DBUrl     string `json:"DB_URL"`
 	OAIApiKey string `json:"OAI_API_KEY"`
 	PHApiKey  string `json:"PH_API_KEY"`
-	Env       string `json:"Env"`
 }
 
 type OpUpdateOpts struct {

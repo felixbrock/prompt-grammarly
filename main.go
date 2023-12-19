@@ -13,9 +13,9 @@ import (
 )
 
 /*
-- Increase oai cost threshold
-- Upgrade to render.com paid plan
 - Clean up Github
+- Change all private keys due to github history
+- Remove todo
 
 LATER:
 - Address prompt injection
@@ -51,11 +51,12 @@ func devHandler() {
 
 func prodConfig() (*app.Config, error) {
 	config := app.Config{
+		Env:       os.Getenv("ENV"),
 		Port:      os.Getenv("PORT"),
 		DBApiKey:  os.Getenv("DB_API_KEY"),
+		DBUrl:     os.Getenv("DB_URL"),
 		OAIApiKey: os.Getenv("OAI_API_KEY"),
 		PHApiKey:  os.Getenv("PH_API_KEY"),
-		Env:       os.Getenv("ENV"),
 	}
 
 	return &config, nil
