@@ -1,6 +1,10 @@
 package component
 
-import "github.com/felixbrock/lemonai/internal/domain"
+import (
+	"fmt"
+
+	"github.com/felixbrock/lemonai/internal/domain"
+)
 
 type hxConfig struct {
 	Endpoint string
@@ -9,12 +13,12 @@ type hxConfig struct {
 	Include  string
 }
 
-type button struct {
+type actionButton struct {
 	Label    string
 	HxConfig hxConfig
 }
 
-templ actionBar(buttons []button) {
+templ actionBar(buttons []actionButton) {
 	<div class="flex flex-row-reverse gap-x-4">
 		for i := 0; i < len(buttons); i++ {
 			<button
@@ -41,26 +45,47 @@ templ actionBar(buttons []button) {
 }
 
 templ sectionWrapper(title string) {
-	<section aria-labelledby={ "section-" + title } class="h-full">
-		<h2 class="sr-only" id={ "section-" + title }>{ title }</h2>
+	<section aria-labelledby={ fmt.Sprintf("section-%s", title) } class="h-full">
+		<h2 class="sr-only" id={ fmt.Sprintf("section-%s", title) }>{ title }</h2>
 		<div class="h-full overflow-hidden rounded-lg bg-black shadow p-4">
 			{ children... }
 		</div>
 	</section>
 }
 
-templ editorWindow(inputId string, title string, prompt string, enabled bool) {
+type editorBtn struct {
+	IconSrc  string
+	IconAlt  string
+	OnClick  string
+	HxConfig hxConfig
+}
+
+templ editorWindow( title string, btns []editorBtn, textFieldArgs TextFieldArgs) {
 	@sectionWrapper(title) {
 		<div class="h-full flex flex-col">
-			<div class="h-6">
-				<div class="h-full -ml-4 -mt-2 flex flex-wrap items-center justify-between sm:flex-nowrap">
-					<div class="ml-4 mt-2">
+			<div class="h-10">
+				<div class="h-full flex items-center justify-between sm:flex-nowrap">
+					<div>
 						<h3 class="text-base font-semibold leading-6">{ title }</h3>
 					</div>
+					for i := 0; i < len(btns); i++ {
+						<button
+ 							type="button"
+ 							class="h-fit w-fit p-1 flex items-center justify-center bg-neutral- rounded-full text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+ 							OnClick={ btns[i].OnClick }
+ 							if btns[i].HxConfig.Method == "POST" {
+								hx-post={ btns[i].HxConfig.Endpoint }
+								hx-ext="json-enc"
+							}
+ 							hx-trigger="click"
+						>
+							<img src={ btns[i].IconSrc } alt={ btns[i].IconAlt }/>
+						</button>
+					}
 				</div>
 			</div>
 			<div class="grow mt-2">
-				@TextField(inputId, prompt, enabled)
+				@TextField(textFieldArgs)
 			</div>
 		</div>
 	}
@@ -68,13 +93,21 @@ templ editorWindow(inputId string, title string, prompt string, enabled bool) {
 
 templ DraftModeEditor() {
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("instructions", "What's Your Prompt Optimization Goal? (Optional)", "", true)
+		@editorWindow("What's Your Prompt Optimization Goal? (Optional)", nil,  TextFieldArgs{ 
+			Id: "instructions", 
+			Prompt: "", 
+			Placeholder: "E.g. The following prompt causes the system to break, due to invalid JSON output syntax. Make 100% sure that only...", 
+			Enabled: true})
 	</div>
 	<div class="h-15/20 pb-4">
-		@editorWindow("prompt", "Your Prompt", "", true)
+		@editorWindow("Your Prompt", nil, TextFieldArgs{ 
+			Id: "prompt", 
+			Prompt: "", 
+			Placeholder: "E.g. Write model instructions for GPT3.5 and GPT4 as an expert in...",
+			Enabled: true})
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimizations", Method: "POST", Target: "#editor", Include: "#instructions, #prompt"}}})
+		@actionBar([]actionButton{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimizations", Method: "POST", Target: "#editor", Include: "#instructions, #prompt"}}})
 	</div>
 }
 
@@ -82,33 +115,37 @@ templ EditModeEditor(id string, original string, optimized string, instructions 
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("instructions", "What's Your Individual Optimization Goal?", instructions,  true)
+		@editorWindow("What's Your Individual Optimization Goal?", nil, TextFieldArgs{ Id: "instructions", Prompt: instructions, Placeholder: "", Enabled: true })
 	</div>
 	<input class="hidden" name="parent_id" id="parent_id" value={ id }/>
 	<div class="h-7/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("prompt", "Your Prompt", original, true)
-		@editorWindow("optimized", "Optimized Prompt", optimized, false)
+		@editorWindow("Your Prompt", nil, TextFieldArgs{ Id: "prompt", Prompt: original, Placeholder: "", Enabled: true})
+		@editorWindow(
+			"Optimized Prompt",  
+			[]editorBtn{{
+				IconSrc: "/static/icons/copy.svg",
+				IconAlt: "Copy",
+				OnClick: "copyText()",
+				HxConfig: hxConfig{Endpoint: fmt.Sprintf("/captures?event_type=%s&optimization_id=%s", "user_copied", id) , Method: "POST"}}},
+			TextFieldArgs{ Id: "optimized", Prompt: optimized, Placeholder: "", Enabled: false})
 	</div>
 	<div class="h-8/20 pb-4">
 		@sectionWrapper("Suggestions") {
 			<ul class="px-2 h-full flex flex-col flex-nowrap gap-4 overflow-y-auto overflow-x-hidden">
 				for i := 0; i < len(*suggestions); i++ {
-					@SuggestionCard((*suggestions)[i])
+					@SuggestionCard((*suggestions)[i], fmt.Sprintf("%d/%d", i+1, len(*suggestions) ))
 				}
 			</ul>
 		}
 	</div>
 	<div class="h-2/20 pb-4">
-		@actionBar([]button{{Label: "Optimize", HxConfig: hxConfig{Endpoint: "/optimizations", Method: "POST", Target: "#editor", Include:  "#instructions, #prompt, #parent_id"}}})
-	</div>
-}
-
-templ ReviewModeEditor(opId string, original string, optimized string) {
-	<div class="h-9/10 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("original","Your Prompt",original, false)
-		@editorWindow("optimized","Optimized Prompt",optimized, false)
-	</div>
-	<div class="h-1/10 pb-4">
-		@actionBar([]button{{Label: "Edit", HxConfig: hxConfig{Endpoint:"/editor/edit?optimization_id=" + opId , Method: "GET", Target: "#editor"}}})
+		@actionBar(
+			[]actionButton{
+				{Label: "Regenerate", 
+				HxConfig: hxConfig{
+					Endpoint: fmt.Sprintf("/optimizations?parent_id=%s", id),
+					Method: "POST",
+					Target: "#editor",
+					Include:  "#instructions, #prompt"}}})
 	</div>
 }

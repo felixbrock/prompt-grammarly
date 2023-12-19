@@ -16,7 +16,6 @@ type ComponentBuilder struct {
 	App         func() templ.Component
 	Draft       func() templ.Component
 	Edit        func(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) templ.Component
-	Review      func(opId string, original string, optimized string) templ.Component
 	Loading     func(optimizationId string, state AnalysisState) templ.Component
 	Error       func(code string, title string, msg string) templ.Component
 	FeedbackBtn func(btnId string, fType string, fVal int, suggId string) templ.Component
@@ -24,8 +23,10 @@ type ComponentBuilder struct {
 
 type Config struct {
 	Port      string `json:"GO_PORT"`
-	OAIApiKey string `json:"OAI_API_KEY"`
 	DBApiKey  string `json:"DB_API_KEY"`
+	OAIApiKey string `json:"OAI_API_KEY"`
+	PHApiKey  string `json:"PH_API_KEY"`
+	Env       string `json:"Env"`
 }
 
 type OpUpdateOpts struct {
@@ -69,11 +70,16 @@ type oaiRepo interface {
 	DeleteThread(threadId string) error
 }
 
+type phRepo interface {
+	Capture(eventType string, opid string) error
+}
+
 type Repo struct {
 	OpRepo   opRepo
 	RunRepo  runRepo
 	SuggRepo suggRepo
 	OAIRepo  oaiRepo
+	PHRepo   phRepo
 }
 
 type App struct {
@@ -94,22 +100,31 @@ func (a App) rateLimit(limiter *rate.Limiter) func(http.Handler) http.Handler {
 	}
 }
 
-func (a App) Start() {
-	limiter := rate.NewLimiter(5, 5)
+func (a App) registerEndpoints(h *http.ServeMux) {
+	limiter := rate.NewLimiter(3, 3)
 
-	mux := http.NewServeMux()
-
-	mux.Handle("/static/",
+	h.Handle("/static/",
 		http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	mux.Handle("/", a.rateLimit(limiter)(AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}}))
-	mux.Handle("/app", a.rateLimit(limiter)(AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}}))
-	mux.Handle("/editor/draft", a.rateLimit(limiter)(AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}}))
-	mux.Handle("/editor/edit", a.rateLimit(limiter)(AppHandler{EditModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}}))
-	mux.Handle("/editor/review", a.rateLimit(limiter)(AppHandler{ReviewModeEditorController{ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo}}))
-	mux.Handle("/optimizations", a.rateLimit(limiter)(AppHandler{OptimizationController{
-		ComponentBuilder: &a.ComponentBuilder, Repo: &a.Repo,
+	h.Handle("/", a.rateLimit(limiter)(AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}}))
+	h.Handle("/app", a.rateLimit(limiter)(AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}}))
+	h.Handle("/editor/draft", a.rateLimit(limiter)(AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}}))
+	h.Handle("/optimizations", a.rateLimit(limiter)(AppHandler{OptimizationController{
+		ComponentBuilder: &a.ComponentBuilder,
+		Repo:             &a.Repo,
+		Config:           &a.Config,
 	}}))
+	h.Handle("/captures", a.rateLimit(limiter)(AppHandler{CaptureController{
+		ComponentBuilder: &a.ComponentBuilder,
+		Repo:             &a.Repo,
+		Config:           &a.Config,
+	}}))
+}
+
+func (a App) Start() {
+	mux := http.NewServeMux()
+
+	a.registerEndpoints(mux)
 
 	s := &http.Server{
 		Addr:              fmt.Sprintf(":%s", a.Config.Port),

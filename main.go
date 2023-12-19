@@ -13,44 +13,16 @@ import (
 )
 
 /*
-- Check for SQL injection
-- Check for XSS
-- Block IP addresses: Too many requests
-
-- Implement feedback logic
-
+- Increase oai bill
+- Upgrade to paid plan
 - Introduce Posthog
-- Add copy button
-
-- Dark mode
-
-- drop button
-- Optimize button to regenarate
-
-- Number for suggestion
-
-
-
-
-- Remove prompts from code base (.gitignore file)
-- update env base and add assistant ids
-
-- end Goroutine after 1 minute
-
-- Implement feedback handling
-
-- Add hints to textfields
-
-- make custom "optional"
-
-- add concurrency
-
-- include suggestions in fields
-
-- Add Posthog
+- Clean up Github
 
 LATER:
 - Address prompt injection
+- Implement feedback logic
+- update env base and add assistant ids
+- Implement feedback handling
 */
 
 func devConfig() (*app.Config, error) {
@@ -81,8 +53,10 @@ func devHandler() {
 func prodConfig() (*app.Config, error) {
 	config := app.Config{
 		Port:      os.Getenv("PORT"),
-		OAIApiKey: os.Getenv("OAI_API_KEY"),
 		DBApiKey:  os.Getenv("DB_API_KEY"),
+		OAIApiKey: os.Getenv("OAI_API_KEY"),
+		PHApiKey:  os.Getenv("PH_API_KEY"),
+		Env:       os.Getenv("ENV"),
 	}
 
 	return &config, nil
@@ -106,7 +80,6 @@ func baseHandler(config *app.Config) {
 		App:     component.App,
 		Draft:   component.DraftModeEditor,
 		Edit:    component.EditModeEditor,
-		Review:  component.ReviewModeEditor,
 		Loading: component.Loading,
 		Error:   component.Error,
 	}
@@ -119,16 +92,19 @@ func baseHandler(config *app.Config) {
 	optRepo := persistence.OptimizationRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/optimization", dbUrlBase)}
 	suggRepo := persistence.SuggestionRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/suggestion", dbUrlBase)}
 	runRepo := persistence.RunRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/run", dbUrlBase)}
-	oaiRepo := persistence.OpenAIRepo{BaseHeaders: []string{
+
+	oaiRepo := persistence.OAIRepo{BaseHeaders: []string{
 		"Content-Type:application/json",
 		"OpenAI-Beta:assistants=v1",
 		fmt.Sprintf("Authorization: Bearer %s", config.OAIApiKey)}}
+	phRepo := persistence.PHRepo{BaseHeaders: []string{"Content-Type: application/json"}, ApiKey: config.PHApiKey}
 
 	repo := app.Repo{
 		OpRepo:   optRepo,
 		RunRepo:  runRepo,
 		SuggRepo: suggRepo,
 		OAIRepo:  oaiRepo,
+		PHRepo:   phRepo,
 	}
 
 	a := app.App{

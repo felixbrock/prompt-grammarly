@@ -33,7 +33,6 @@ type assistant struct {
 type optimizationReq struct {
 	OriginalPrompt string `json:"prompt"`
 	Instructions   string `json:"instructions"`
-	ParentId       string `json:"parent_id"`
 }
 
 type oaiSuggestion struct {
@@ -280,6 +279,8 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 
 	if err != nil {
 		slog.Warn(fmt.Sprintf("Assistant %s produced unparseable JSON suggestions. Ignoring suggestions...", targetAssistant.Name))
+		// to accommodate defer statement
+		err = nil
 		return make([]oaiSuggestion, 0), nil
 	}
 
@@ -379,7 +380,7 @@ func (c OptimizationController) optimize(opId string, parentId string, base opti
 	c.Repo.OpRepo.Update(opId, opts)
 }
 
-func (c OptimizationController) run(opId string, body []byte) {
+func (c OptimizationController) run(opId string, parentId string, body []byte) {
 	opReqBody, err := ReadJSON[optimizationReq](body)
 
 	if err != nil {
@@ -387,11 +388,17 @@ func (c OptimizationController) run(opId string, body []byte) {
 		return
 	}
 
+	if parentId != "" {
+		c.Repo.PHRepo.Capture(fmt.Sprintf("%s_user_regenerated", c.Config.Env), opId)
+	} else {
+		c.Repo.PHRepo.Capture(fmt.Sprintf("%s_user_generated", c.Config.Env), opId)
+	}
+
 	optimization := domain.Optimization{
 		Id:              opId,
 		OriginalPrompt:  opReqBody.OriginalPrompt,
 		Instructions:    opReqBody.Instructions,
-		ParentId:        opReqBody.ParentId,
+		ParentId:        parentId,
 		OptimizedPrompt: "",
 		State:           "pending"}
 
@@ -402,7 +409,7 @@ func (c OptimizationController) run(opId string, body []byte) {
 		return
 	}
 
-	c.optimize(opId, opReqBody.ParentId, optimizationBase{Prompt: opReqBody.OriginalPrompt,
+	c.optimize(opId, parentId, optimizationBase{Prompt: opReqBody.OriginalPrompt,
 		Instructions: opReqBody.Instructions})
 }
 
@@ -434,65 +441,6 @@ func (c OptimizationController) readAnalysisState(optimizationId string) (*Analy
 	}
 
 	return &state, nil
-}
-
-type optimizationRunRes struct {
-	optimization *domain.Optimization
-	suggestions  *[]domain.Suggestion
-}
-
-func (c EditModeEditorController) readOptimizationRun(optimizationId string) (*optimizationRunRes, error) {
-	{
-		var wg sync.WaitGroup
-
-		opOutputCh := make(chan *domain.Optimization)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			optimization, err := c.Repo.OpRepo.Read(optimizationId)
-
-			if err != nil {
-				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
-				return
-			}
-
-			opOutputCh <- optimization
-
-		}()
-
-		suggOutputCh := make(chan *[]domain.Suggestion)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			suggestions, err := c.Repo.SuggRepo.Read(SuggReadFilter{OptimizationId: optimizationId})
-
-			if err != nil {
-				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
-				return
-			}
-
-			suggOutputCh <- suggestions
-
-		}()
-
-		go func() {
-			wg.Wait()
-			close(opOutputCh)
-			close(suggOutputCh)
-		}()
-
-		suggestions, ok := <-suggOutputCh
-		if !ok {
-			return nil, errors.New("error occured while retrieving suggestions")
-		}
-
-		optimization, ok := <-opOutputCh
-		if !ok {
-			return nil, errors.New("error occured while retrieving optimization")
-		}
-
-		return &optimizationRunRes{optimization: optimization, suggestions: suggestions}, nil
-	}
 }
 
 type IndexController struct {
@@ -544,85 +492,10 @@ func (c DraftModeEditorController) Handle(w http.ResponseWriter, r *http.Request
 	}
 }
 
-type EditModeEditorController struct {
-	ComponentBuilder *ComponentBuilder
-	Repo             *Repo
-}
-
-func (c EditModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	switch r.Method {
-	case "GET":
-		id := r.URL.Query().Get("optimization_id")
-
-		if id == "" {
-			errConfig := get400()
-			err := errors.New("missing optimization_id query parameter")
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
-				Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
-		}
-
-		runData, err := c.readOptimizationRun(id)
-
-		if err != nil {
-			errConfig := get500()
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
-				Code:        errConfig.Code,
-				Message:     errConfig.Msg,
-				ContentType: "text/html",
-				Error:       err}
-		}
-
-		return &AppResp{Component: c.ComponentBuilder.Edit(
-			id,
-			runData.optimization.OriginalPrompt,
-			runData.optimization.OptimizedPrompt,
-			runData.optimization.Instructions,
-			runData.suggestions),
-			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
-	default:
-		errConfig := get405()
-		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
-			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
-
-	}
-}
-
-type ReviewModeEditorController struct {
-	ComponentBuilder *ComponentBuilder
-	Repo             *Repo
-}
-
-func (c ReviewModeEditorController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
-	switch r.Method {
-	case "GET":
-		id := r.URL.Query().Get("id")
-
-		op, err := c.Repo.OpRepo.Read(id)
-
-		errConfig500 := get500()
-		if err != nil {
-			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
-				Code:        errConfig500.Code,
-				Message:     errConfig500.Msg,
-				ContentType: "text/html",
-				Error:       err}
-		}
-
-		return &AppResp{Component: c.ComponentBuilder.Review(op.Id, op.OriginalPrompt, op.OptimizedPrompt),
-			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
-	default:
-		errConfig := get405()
-		err := errors.New("method not allowed")
-		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
-			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
-
-	}
-}
-
 type OptimizationController struct {
 	ComponentBuilder *ComponentBuilder
 	Repo             *Repo
+	Config           *Config
 }
 
 func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
@@ -660,8 +533,18 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 					Error:       err}
 			}
 
+			suggs, err := c.Repo.SuggRepo.Read(SuggReadFilter{OptimizationId: id})
+
+			if err != nil {
+				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
+					Code:        errConfig500.Code,
+					Message:     errConfig500.Msg,
+					ContentType: "text/html",
+					Error:       err}
+			}
+
 			if op.State == "completed" {
-				return &AppResp{Component: c.ComponentBuilder.Review(op.Id, op.OriginalPrompt, op.OptimizedPrompt),
+				return &AppResp{Component: c.ComponentBuilder.Edit(op.Id, op.OriginalPrompt, op.OptimizedPrompt, op.Instructions, suggs),
 					Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 			}
 		}
@@ -669,6 +552,7 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 		return &AppResp{Component: c.ComponentBuilder.Loading(id, *state),
 			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
 	case "POST":
+		parentId := r.URL.Query().Get("parent_id")
 		optimizationId := uuid.New().String()
 
 		body, err := Read(r.Body)
@@ -681,7 +565,7 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 				Error:       err}
 		}
 
-		go c.run(optimizationId, body)
+		go c.run(optimizationId, parentId, body)
 
 		return &AppResp{Component: c.ComponentBuilder.Loading(optimizationId, AnalysisState{
 			CustomCompleted:             false,
@@ -697,5 +581,46 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
 
 	}
+}
 
+func (c CaptureController) capture(eventType string, opId string) {
+	err := c.Repo.PHRepo.Capture(fmt.Sprintf("%s_%s", c.Config.Env, eventType), opId)
+
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+	}
+
+}
+
+type CaptureController struct {
+	ComponentBuilder *ComponentBuilder
+	Repo             *Repo
+	Config           *Config
+}
+
+func (c CaptureController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	errConfig400 := get400()
+
+	switch r.Method {
+	case "POST":
+		eventType := r.URL.Query().Get("event_type")
+		opId := r.URL.Query().Get("optimization_id")
+
+		if eventType == "" || opId == "" {
+			err := errors.New("missing query parameter")
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig400.Code), errConfig400.Title, errConfig400.Msg),
+				Code: errConfig400.Code, Message: errConfig400.Msg, ContentType: "text/html", Error: err}
+		}
+
+		go c.capture(eventType, opId)
+
+		return &AppResp{Component: nil,
+			Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+	default:
+		errConfig := get405()
+		err := errors.New("method not allowed")
+		return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+			Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
+
+	}
 }

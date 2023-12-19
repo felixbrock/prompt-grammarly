@@ -7,11 +7,11 @@ import (
 	"github.com/felixbrock/lemonai/internal/app"
 )
 
-type OpenAIRepo struct {
+type OAIRepo struct {
 	BaseHeaders []string
 }
 
-func (r OpenAIRepo) GetRun(threadId string, runId string) (*app.OAIRun, error) {
+func (r OAIRepo) GetRun(threadId string, runId string) (*app.OAIRun, error) {
 
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs/%s", threadId, runId)
 
@@ -24,7 +24,7 @@ func (r OpenAIRepo) GetRun(threadId string, runId string) (*app.OAIRun, error) {
 	return record, nil
 }
 
-func (r OpenAIRepo) PostRun(assistantId string, threadId string) (*app.OAIRun, error) {
+func (r OAIRepo) PostRun(assistantId string, threadId string) (*app.OAIRun, error) {
 	body := []byte(fmt.Sprintf(`{"assistant_id": "%s"}`, assistantId))
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/runs", threadId)
 
@@ -37,7 +37,7 @@ func (r OpenAIRepo) PostRun(assistantId string, threadId string) (*app.OAIRun, e
 	return record, nil
 }
 
-func (r OpenAIRepo) GetMsgs(threadId string) (*[]app.OAIMessage, error) {
+func (r OAIRepo) GetMsgs(threadId string) (*[]app.OAIMessage, error) {
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
 
 	msgs, err := request[app.OAIMessageListing](context.TODO(), reqConfig{Method: "GET", Url: url, Headers: r.BaseHeaders}, 200)
@@ -49,7 +49,7 @@ func (r OpenAIRepo) GetMsgs(threadId string) (*[]app.OAIMessage, error) {
 	return &msgs.Data, nil
 }
 
-func (r OpenAIRepo) PostMsg(proto app.MessageProto, threadId string) error {
+func (r OAIRepo) PostMsg(proto app.MessageProto, threadId string) error {
 	body := []byte(fmt.Sprintf(`{"role": "%s", "content": %s}`, proto.Role, proto.Content))
 	url := fmt.Sprintf("https://api.openai.com/v1/threads/%s/messages", threadId)
 
@@ -62,7 +62,7 @@ func (r OpenAIRepo) PostMsg(proto app.MessageProto, threadId string) error {
 	return nil
 }
 
-func (r OpenAIRepo) PostThread() (string, error) {
+func (r OAIRepo) PostThread() (string, error) {
 	thread, err := request[app.OAIThread](context.TODO(), reqConfig{Method: "POST", Url: "https://api.openai.com/v1/threads", Headers: r.BaseHeaders}, 200)
 
 	if err != nil {
@@ -72,7 +72,7 @@ func (r OpenAIRepo) PostThread() (string, error) {
 	return thread.Id, nil
 }
 
-func (r OpenAIRepo) DeleteThread(threadId string) error {
+func (r OAIRepo) DeleteThread(threadId string) error {
 	url := fmt.Sprintf(`https://api.openai.com/v1/threads/%s`, threadId)
 	_, err := request[app.OAIThread](context.TODO(), reqConfig{Method: "DELETE", Url: url, Headers: r.BaseHeaders}, 200)
 
