@@ -92,14 +92,14 @@ templ editorWindow( title string, btns []editorBtn, textFieldArgs TextFieldArgs)
 }
 
 templ DraftModeEditor() {
-	<div class="h-3/20 w-full pb-4">
+	<div class="h-4/20 w-full pb-4">
 		@editorWindow("What's Your Prompt Optimization Goal? (Optional)", nil,  TextFieldArgs{ 
 			Id: "instructions", 
 			Prompt: "", 
 			Placeholder: "E.g. The following prompt causes the system to break, due to invalid JSON output syntax. Make 100% sure that only...", 
 			Enabled: true})
 	</div>
-	<div class="h-15/20 pb-4">
+	<div class="h-14/20 pb-4">
 		@editorWindow("Your Prompt", nil, TextFieldArgs{ 
 			Id: "prompt", 
 			Prompt: "", 

@@ -12,18 +12,6 @@ import (
 	_ "go.uber.org/automaxprocs"
 )
 
-/*
-- Clean up Github
-- Change all private keys due to github history
-- Remove todo
-
-LATER:
-- Address prompt injection
-- Implement feedback logic
-- update env base and add assistant ids
-- Implement feedback handling
-*/
-
 func devConfig() (*app.Config, error) {
 	env, err := os.ReadFile("env.json")
 	if err != nil {
@@ -87,11 +75,10 @@ func baseHandler(config *app.Config) {
 	dbHeader := []string{
 		fmt.Sprintf("apikey:%s", config.DBApiKey),
 		fmt.Sprintf("Authorization:Bearer %s", config.DBApiKey)}
-	dbUrlBase := "https://cllevlrokigwvbbnbfiu.supabase.co/rest/v1"
 
-	optRepo := persistence.OptimizationRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/optimization", dbUrlBase)}
-	suggRepo := persistence.SuggestionRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/suggestion", dbUrlBase)}
-	runRepo := persistence.RunRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/run", dbUrlBase)}
+	optRepo := persistence.OptimizationRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/optimization", config.DBUrl)}
+	suggRepo := persistence.SuggestionRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/suggestion", config.DBUrl)}
+	runRepo := persistence.RunRepo{BaseHeaders: dbHeader, BaseUrl: fmt.Sprintf("%s/run", config.DBUrl)}
 
 	oaiRepo := persistence.OAIRepo{BaseHeaders: []string{
 		"Content-Type:application/json",

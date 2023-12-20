@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+    echo "Error: Missing input parameter."
+    exit 1
+fi
+
 if ! sudo systemctl is-active --quiet docker.service; then
     sudo systemctl start docker.service
 fi
