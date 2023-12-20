@@ -12,13 +12,13 @@ import (
 )
 
 type ComponentBuilder struct {
-	Index       func() templ.Component
-	App         func() templ.Component
-	Draft       func() templ.Component
-	Edit        func(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) templ.Component
-	Loading     func(optimizationId string, state AnalysisState) templ.Component
-	Error       func(code string, title string, msg string) templ.Component
-	FeedbackBtn func(btnId string, fType string, fVal int, suggId string) templ.Component
+	Index            func() templ.Component
+	App              func() templ.Component
+	Draft            func() templ.Component
+	Edit             func(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) templ.Component
+	SuggestionWindow func(suggs *[]domain.Suggestion) templ.Component
+	Loading          func(optimizationId string, state AnalysisState) templ.Component
+	Error            func(code string, title string, msg string) templ.Component
 }
 
 type Config struct {
@@ -53,7 +53,8 @@ type runRepo interface {
 }
 
 type SuggReadFilter struct {
-	OptimizationId string
+	OpIdCond   string
+	UFeedbCond string
 }
 
 type suggRepo interface {
@@ -110,6 +111,11 @@ func (a App) registerEndpoints(h *http.ServeMux) {
 	h.Handle("/", a.rateLimit(limiter)(AppHandler{IndexController{ComponentBuilder: &a.ComponentBuilder}}))
 	h.Handle("/app", a.rateLimit(limiter)(AppHandler{AppController{ComponentBuilder: &a.ComponentBuilder}}))
 	h.Handle("/editor/draft", a.rateLimit(limiter)(AppHandler{DraftModeEditorController{ComponentBuilder: &a.ComponentBuilder}}))
+	h.Handle("/suggestions", a.rateLimit(limiter)(AppHandler{SuggestionController{
+		ComponentBuilder: &a.ComponentBuilder,
+		Repo:             &a.Repo,
+		Config:           &a.Config,
+	}}))
 	h.Handle("/optimizations", a.rateLimit(limiter)(AppHandler{OptimizationController{
 		ComponentBuilder: &a.ComponentBuilder,
 		Repo:             &a.Repo,

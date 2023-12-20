@@ -20,7 +20,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
       "console": "integratedTerminal",
-      "preLaunchTask": "bun: build"
+      "preLaunchTask": "build"
     }
   ]
 }

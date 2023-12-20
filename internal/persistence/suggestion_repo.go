@@ -52,11 +52,24 @@ func (r SuggestionRepo) Update(id string, userFeedback int16) error {
 	return nil
 }
 
+func (r SuggestionRepo) getFilterParams(filter app.SuggReadFilter) []string {
+	var params []string
+
+	if filter.OpIdCond != "" {
+		params = append(params, fmt.Sprintf("optimization_id=%s", filter.OpIdCond))
+	}
+	if filter.UFeedbCond != "" {
+		params = append(params, fmt.Sprintf("user_feedback=%s", filter.UFeedbCond))
+	}
+
+	return params
+}
+
 func (r SuggestionRepo) Read(filter app.SuggReadFilter) (*[]domain.Suggestion, error) {
 	records, err := request[[]domain.Suggestion](context.TODO(), reqConfig{
 		Method:    "GET",
 		Url:       r.BaseUrl,
-		UrlParams: []string{fmt.Sprintf("optimization_id=eq.%s", filter.OptimizationId)},
+		UrlParams: r.getFilterParams(filter),
 		Body:      nil,
 		Headers:   r.BaseHeaders},
 		200)

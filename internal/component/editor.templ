@@ -6,6 +6,8 @@ import (
 	"github.com/felixbrock/lemonai/internal/domain"
 )
 
+const instructionTitle = "What's Your Prompt Optimization Goal? (Optional)"
+
 type hxConfig struct {
 	Endpoint string
 	Method   string
@@ -44,13 +46,15 @@ templ actionBar(buttons []actionButton) {
 	</div>
 }
 
-templ sectionWrapper(title string) {
-	<section aria-labelledby={ fmt.Sprintf("section-%s", title) } class="h-full">
-		<h2 class="sr-only" id={ fmt.Sprintf("section-%s", title) }>{ title }</h2>
-		<div class="h-full overflow-hidden rounded-lg bg-black shadow p-4">
-			{ children... }
-		</div>
-	</section>
+templ sectionWrapper(id string, title string) {
+	<div id={ id } name={ id } class="h-full">
+		<section aria-labelledby={ fmt.Sprintf("section-%s", id) } class="h-full">
+			<h2 class="sr-only" id={ fmt.Sprintf("section-%s", id) }>{ title }</h2>
+			<div class="h-full overflow-hidden rounded-lg bg-black shadow p-4">
+				{ children... }
+			</div>
+		</section>
+	</div>
 }
 
 type editorBtn struct {
@@ -59,8 +63,8 @@ type editorBtn struct {
 	HxConfig hxConfig
 }
 
-templ editorWindow( title string, btns []editorBtn, textFieldArgs TextFieldArgs) {
-	@sectionWrapper(title) {
+templ editorWindow(id string, title string, btns []editorBtn, textFieldArgs TextFieldArgs) {
+	@sectionWrapper(id, title) {
 		<div class="h-full flex flex-col">
 			<div class="h-10">
 				<div class="h-full flex items-center justify-between sm:flex-nowrap">
@@ -93,14 +97,14 @@ templ editorWindow( title string, btns []editorBtn, textFieldArgs TextFieldArgs)
 
 templ DraftModeEditor() {
 	<div class="h-4/20 w-full pb-4">
-		@editorWindow("What's Your Prompt Optimization Goal? (Optional)", nil,  TextFieldArgs{ 
+		@editorWindow("instruction-window", instructionTitle, nil,  TextFieldArgs{ 
 			Id: "instructions", 
 			Prompt: "", 
 			Placeholder: "E.g. The following prompt causes the system to break, due to invalid JSON output syntax. Make 100% sure that only...", 
 			Enabled: true})
 	</div>
 	<div class="h-14/20 pb-4">
-		@editorWindow("Your Prompt", nil, TextFieldArgs{ 
+		@editorWindow("prompt-window", "Your Prompt", nil, TextFieldArgs{ 
 			Id: "prompt", 
 			Prompt: "", 
 			Placeholder: "E.g. Write model instructions for GPT3.5 and GPT4 as an expert in...",
@@ -111,16 +115,26 @@ templ DraftModeEditor() {
 	</div>
 }
 
+templ SuggestionWindow(suggs *[]domain.Suggestion) {
+	@sectionWrapper("suggestion-window","Considered Suggestions") {
+		<ul class="px-2 h-full flex flex-col flex-nowrap gap-4 overflow-y-auto overflow-x-hidden">
+			for i := 0; i < len(*suggs); i++ {
+				@SuggestionCard((*suggs)[i], fmt.Sprintf("%d/%d", i+1, len(*suggs) ))
+			}
+		</ul>
+	}
+}
+
 templ EditModeEditor(id string, original string, optimized string, instructions string, suggestions *[]domain.Suggestion) {
 	// hx-on="htmx:configRequest: event.detail.parameters.selectionStart = event.target.selectionStart;console.log(event.target)"
 	// hx-trigger="click,keyup"
 	<div class="h-3/20 w-full pb-4">
-		@editorWindow("What's Your Individual Optimization Goal?", nil, TextFieldArgs{ Id: "instructions", Prompt: instructions, Placeholder: "", Enabled: true })
+		@editorWindow("instruction-window", instructionTitle, nil, TextFieldArgs{ Id: "instructions", Prompt: instructions, Placeholder: "", Enabled: true })
 	</div>
 	<input class="hidden" name="parent_id" id="parent_id" value={ id }/>
-	<div class="h-7/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-		@editorWindow("Your Prompt", nil, TextFieldArgs{ Id: "prompt", Prompt: original, Placeholder: "", Enabled: true})
-		@editorWindow(
+	<div class="h-9/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+		@editorWindow("prompt-window", "Your Prompt", nil, TextFieldArgs{ Id: "prompt", Prompt: original, Placeholder: "", Enabled: true})
+		@editorWindow("optimized-window",
 			"Optimized Prompt",  
 			[]editorBtn{{
 				SvgPath: "M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z",
@@ -128,14 +142,8 @@ templ EditModeEditor(id string, original string, optimized string, instructions 
 				HxConfig: hxConfig{Endpoint: fmt.Sprintf("/captures?event_type=%s&optimization_id=%s", "user_copied", id) , Method: "POST"}}},
 			TextFieldArgs{ Id: "optimized", Prompt: optimized, Placeholder: "", Enabled: false})
 	</div>
-	<div class="h-8/20 pb-4">
-		@sectionWrapper("Suggestions") {
-			<ul class="px-2 h-full flex flex-col flex-nowrap gap-4 overflow-y-auto overflow-x-hidden">
-				for i := 0; i < len(*suggestions); i++ {
-					@SuggestionCard((*suggestions)[i], fmt.Sprintf("%d/%d", i+1, len(*suggestions) ))
-				}
-			</ul>
-		}
+	<div class="h-6/20 pb-4">
+		@SuggestionWindow(suggestions)
 	</div>
 	<div class="h-2/20 pb-4">
 		@actionBar(

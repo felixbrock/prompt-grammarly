@@ -88,7 +88,7 @@ func (c OptimizationController) runAssistant(threadId string, userPrompt string,
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	slog.Info(fmt.Sprintf("Running %s analysis...\n", assistant.Name))
@@ -492,6 +492,71 @@ func (c DraftModeEditorController) Handle(w http.ResponseWriter, r *http.Request
 	}
 }
 
+type SuggestionController struct {
+	ComponentBuilder *ComponentBuilder
+	Repo             *Repo
+	Config           *Config
+}
+
+func (c SuggestionController) Handle(w http.ResponseWriter, r *http.Request) *AppResp {
+	{
+		switch r.Method {
+		case "PATCH":
+			id := r.URL.Query().Get("sugg_id")
+			opId := r.URL.Query().Get("op_id")
+			fVal := r.URL.Query().Get("feedb_val")
+
+			if id == "" || opId == "" || fVal == "" {
+				errConfig400 := get400()
+				err := errors.New("missing query parameter")
+				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig400.Code), errConfig400.Title, errConfig400.Msg),
+					Code: errConfig400.Code, Message: errConfig400.Msg, ContentType: "text/html", Error: err}
+			}
+
+			fValI, err := strconv.Atoi(fVal)
+
+			errConfig500 := get500()
+			if err != nil {
+				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
+					Code:        errConfig500.Code,
+					Message:     errConfig500.Msg,
+					ContentType: "text/html",
+					Error:       err}
+			}
+
+			err = c.Repo.SuggRepo.Update(id, int16(fValI))
+
+			if err != nil {
+				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
+					Code:        errConfig500.Code,
+					Message:     errConfig500.Msg,
+					ContentType: "text/html",
+					Error:       err}
+			}
+
+			suggs, err := c.Repo.SuggRepo.Read(SuggReadFilter{OpIdCond: fmt.Sprintf("eq.%s", opId), UFeedbCond: fmt.Sprintf("gt.%d", fValI)})
+
+			if err != nil {
+				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),
+					Code:        errConfig500.Code,
+					Message:     errConfig500.Msg,
+					ContentType: "text/html",
+					Error:       err}
+			}
+
+			return &AppResp{Component: c.ComponentBuilder.SuggestionWindow(suggs),
+				Code: 200, Message: "OK", ContentType: "text/html", Error: nil}
+		default:
+			errConfig := get405()
+			err := errors.New("method not allowed")
+			return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig.Code), errConfig.Title, errConfig.Msg),
+				Code: errConfig.Code, Message: errConfig.Msg, ContentType: "text/html", Error: err}
+
+		}
+	}
+
+}
+
 type OptimizationController struct {
 	ComponentBuilder *ComponentBuilder
 	Repo             *Repo
@@ -533,7 +598,7 @@ func (c OptimizationController) Handle(w http.ResponseWriter, r *http.Request) *
 					Error:       err}
 			}
 
-			suggs, err := c.Repo.SuggRepo.Read(SuggReadFilter{OptimizationId: id})
+			suggs, err := c.Repo.SuggRepo.Read(SuggReadFilter{OpIdCond: fmt.Sprintf("eq.%s", id)})
 
 			if err != nil {
 				return &AppResp{Component: c.ComponentBuilder.Error(strconv.Itoa(errConfig500.Code), errConfig500.Title, errConfig500.Msg),

@@ -3,7 +3,7 @@
   "tasks": [
     {
       "type": "process",
-      "label": "bun: build",
+      "label": "build",
       "command": "sh",
       "args": ["${workspaceFolder}/scripts/build.sh"]
     }
