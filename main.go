@@ -64,12 +64,13 @@ func prodHandler() {
 func baseHandler(config *app.Config) {
 
 	componentBuilder := app.ComponentBuilder{
-		Index:   component.Index,
-		App:     component.App,
-		Draft:   component.DraftModeEditor,
-		Edit:    component.EditModeEditor,
-		Loading: component.Loading,
-		Error:   component.Error,
+		Index:            component.Index,
+		App:              component.App,
+		Draft:            component.DraftModeEditor,
+		Edit:             component.EditModeEditor,
+		SuggestionWindow: component.SuggestionWindow,
+		Loading:          component.Loading,
+		Error:            component.Error,
 	}
 
 	dbHeader := []string{
