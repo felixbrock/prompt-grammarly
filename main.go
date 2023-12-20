@@ -12,10 +12,6 @@ import (
 	_ "go.uber.org/automaxprocs"
 )
 
-/*
-- Rm genCustomPrompt
-*/
-
 func devConfig() (*app.Config, error) {
 	env, err := os.ReadFile("env.json")
 	if err != nil {
