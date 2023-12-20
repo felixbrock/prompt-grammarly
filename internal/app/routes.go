@@ -146,26 +146,84 @@ func (c OptimizationController) writeUserPrompt(threadId string, prompt string) 
 	return nil
 }
 
-func (c OptimizationController) genCustomAssistantUserPrompt(customInstructions string, prompt string) string {
-	return fmt.Sprintf(
-		`Consider the following Custom Goal:
-
-		%s
-
-		Evaluate the the following model instruction against the custom goal:
-
-		%s
-
-		`, customInstructions, prompt)
+type shotInstruct struct {
+	Instruct string
+	Ctx      string
 }
 
-func (c OptimizationController) genAssistantUserPrompt(assistantName string, prompt string) string {
+func (c OptimizationController) getShotPrompt(wrongShots *[]domain.Suggestion) (*shotInstruct, error) {
+	shots, err := json.Marshal(*wrongShots)
+
+	if err != nil {
+		return nil, err
+	}
+
+	instruct := `.
+
+			Study the included 'Wrong Shots', which represent suggestions that you have made in your last optimization attempt. Those were not creating enough value for the user.
+			Only create suggestions that are covering issues different from the ones included in the wrong shots
+			`
+	ctx := fmt.Sprintf(
+		`Wrong Shots:
+
+			%s
+		`, shots)
+	return &shotInstruct{Instruct: instruct, Ctx: ctx}, nil
+}
+
+func (c OptimizationController) genCustomAssistantUserPrompt(customInstructions string, prompt string, wrongShots *[]domain.Suggestion) (string, error) {
+	var shotInstruct string
+	var shotCtx string
+	if *wrongShots != nil && len(*wrongShots) != 0 {
+		shotInstructs, err := c.getShotPrompt(wrongShots)
+
+		if err != nil {
+			return "", err
+		}
+
+		shotInstruct = (*shotInstructs).Instruct
+		shotCtx = (*shotInstructs).Ctx
+	}
+
 	return fmt.Sprintf(
-		`Evaluate the %s of the following model instruction:
+		`Evaluate the the following "Model Instruction" against the "Custom Goal"%s:
+		
+		Custom Goal:
+		%s
+		
+
+		Model Instructions:
+		%s
+
+
+		%s
+		`, shotInstruct, customInstructions, prompt, shotCtx), nil
+}
+
+func (c OptimizationController) genAssistantUserPrompt(assistantName string, prompt string, wrongShots *[]domain.Suggestion) (string, error) {
+
+	var shotInstruct string
+	var shotCtx string
+	if *wrongShots != nil && len(*wrongShots) != 0 {
+		shotInstructs, err := c.getShotPrompt(wrongShots)
+
+		if err != nil {
+			return "", err
+		}
+
+		shotInstruct = (*shotInstructs).Instruct
+		shotCtx = (*shotInstructs).Ctx
+	}
+
+	return fmt.Sprintf(
+		`Evaluate the %s of the following "Model Instructions"%s:
+
+		Model Instructions:
 
 		%s
 
-		`, strings.Join(strings.Split(assistantName, "_"), " "), prompt)
+		%s
+		`, strings.Join(strings.Split(assistantName, "_"), " "), shotInstruct, prompt, shotCtx), nil
 }
 
 func (c OptimizationController) genOperatorUserPrompt(originalPrompt string, msg []byte) string {
@@ -224,13 +282,21 @@ type optimizationBase struct {
 	Instructions string
 }
 
-func (c OptimizationController) suggest(optimizationId string, threadId string, base optimizationBase, targetAssistant assistant) ([]oaiSuggestion, error) {
+type suggestArgs struct {
+	WrongShots *[]domain.Suggestion
+	Base       optimizationBase
+	Assistant  assistant
+	OpId       string
+	ThId       string
+}
+
+func (c OptimizationController) suggest(args suggestArgs) ([]oaiSuggestion, error) {
 	runId := uuid.New().String()
 	run := domain.Run{
 		Id:             runId,
-		Type:           targetAssistant.Name,
+		Type:           args.Assistant.Name,
 		State:          "running",
-		OptimizationId: optimizationId}
+		OptimizationId: args.OpId}
 
 	err := c.Repo.RunRepo.Insert(run)
 
@@ -254,18 +320,25 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 	}()
 
 	var userPrompt string
-	if targetAssistant.Name == "custom" {
-		if base.Instructions == "" {
+	if args.Assistant.Name == "custom" {
+		if args.Base.Instructions == "" {
 			return []oaiSuggestion{}, nil
 		}
 
-		userPrompt = c.genCustomAssistantUserPrompt(base.Instructions, base.Prompt)
-	} else {
+		userPrompt, err = c.genCustomAssistantUserPrompt(args.Base.Instructions, args.Base.Prompt, args.WrongShots)
 
-		userPrompt = c.genAssistantUserPrompt(targetAssistant.Name, base.Prompt)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		userPrompt, err = c.genAssistantUserPrompt(args.Assistant.Name, args.Base.Prompt, args.WrongShots)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	msg, err := c.runAssistant(threadId, userPrompt, targetAssistant)
+	msg, err := c.runAssistant(args.ThId, userPrompt, args.Assistant)
 
 	if err != nil {
 		return nil, err
@@ -278,7 +351,7 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 	suggestions, err = ReadJSON[[]oaiSuggestion](msg)
 
 	if err != nil {
-		slog.Warn(fmt.Sprintf("Assistant %s produced unparseable JSON suggestions. Ignoring suggestions...", targetAssistant.Name))
+		slog.Warn(fmt.Sprintf("Assistant %s produced unparseable JSON suggestions. Ignoring suggestions...", args.Assistant.Name))
 		// to accommodate defer statement
 		err = nil
 		return make([]oaiSuggestion, 0), nil
@@ -292,9 +365,9 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 			Reasoning:      (*suggestions)[i].Reasoning,
 			UserFeedback:   0,
 			Target:         (*suggestions)[i].Target,
-			Type:           targetAssistant.Name,
+			Type:           args.Assistant.Name,
 			RunId:          runId,
-			OptimizationId: optimizationId}
+			OptimizationId: args.OpId}
 	}
 
 	err = c.Repo.SuggRepo.Insert(suggestionRecords)
@@ -303,9 +376,20 @@ func (c OptimizationController) suggest(optimizationId string, threadId string, 
 		return nil, err
 	}
 
-	slog.Info(fmt.Sprintf("Successfully generated %s suggestions", targetAssistant.Name))
+	slog.Info(fmt.Sprintf("Successfully generated %s suggestions", args.Assistant.Name))
 
 	return *suggestions, nil
+}
+
+func (c OptimizationController) groupByType(shots *[]domain.Suggestion, shotsByType *map[string][]domain.Suggestion) {
+	for i := 0; i < len(*shots); i++ {
+		shot := (*shots)[i]
+		if _, ok := (*shotsByType)[shot.Type]; ok {
+			(*shotsByType)[shot.Type] = append((*shotsByType)[shot.Type], shot)
+		} else {
+			(*shotsByType)[shot.Type] = []domain.Suggestion{shot}
+		}
+	}
 }
 
 func (c OptimizationController) optimize(opId string, parentId string, base optimizationBase) {
@@ -314,6 +398,18 @@ func (c OptimizationController) optimize(opId string, parentId string, base opti
 		{Id: "asst_8IjCbTm7tsgCtSbhEL7E7rjB", Name: "clarity"},
 		{Id: "asst_221Q0E9EeazCHcGV4Qd050Gy", Name: "consistency"},
 		{Id: "asst_9zcQxyRh4E10Agg08p8mYDO8", Name: "custom"}}
+
+	shotsByType := make(map[string][]domain.Suggestion)
+	if parentId != "" {
+		wrongShots, err := c.Repo.SuggRepo.Read(SuggReadFilter{OpIdCond: fmt.Sprintf("eq.%s", parentId), UFeedbCond: "eq.-1"})
+
+		if err != nil {
+			slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
+			return
+		}
+
+		c.groupByType(wrongShots, &shotsByType)
+	}
 
 	var wg sync.WaitGroup
 	outputCh := make(chan []oaiSuggestion)
@@ -337,7 +433,8 @@ func (c OptimizationController) optimize(opId string, parentId string, base opti
 				}
 			}()
 
-			suggestions, err := c.suggest(opId, thId, base, assistants[id])
+			shots := shotsByType[assistants[id].Name]
+			suggestions, err := c.suggest(suggestArgs{OpId: opId, ThId: thId, Base: base, Assistant: assistants[id], WrongShots: &shots})
 
 			if err != nil {
 				slog.Error(fmt.Sprintf("Error occured: %s", err.Error()))
@@ -362,7 +459,6 @@ func (c OptimizationController) optimize(opId string, parentId string, base opti
 		suggestions = append(suggestions, output...)
 	}
 
-	var msg []byte
 	msg, err := c.apply(suggestions)
 
 	if err != nil {

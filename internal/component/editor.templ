@@ -100,14 +100,19 @@ templ DraftModeEditor() {
 		@editorWindow("instruction-window", instructionTitle, nil,  TextFieldArgs{ 
 			Id: "instructions", 
 			Prompt: "", 
-			Placeholder: "E.g. The following prompt causes the system to break, due to invalid JSON output syntax. Make 100% sure that only...", 
+			Placeholder: "E.g. Fix the following prompt so text will *ALWAYS* be returned in markdown. It keeps breaking my system! Also,...", 
 			Enabled: true})
 	</div>
 	<div class="h-14/20 pb-4">
 		@editorWindow("prompt-window", "Your Prompt", nil, TextFieldArgs{ 
 			Id: "prompt", 
 			Prompt: "", 
-			Placeholder: "E.g. Write model instructions for GPT3.5 and GPT4 as an expert in...",
+			Placeholder: `For example:
+
+Model Instructions:
+"""When formatting code changes, encapsulate every *edit block* within markdown code fencing and specify the appropriate programming language. Begin every *edit block* with the file's full path and avoid proposing edits for *read-only* files. For each *edit block*, ensure the ORIGINAL section accurately reflects a consecutive sequence of lines from the file with no modifications, including:
+
+- All leading spaces and the exact indentation from the original...	`,
 			Enabled: true})
 	</div>
 	<div class="h-2/20 pb-4">
