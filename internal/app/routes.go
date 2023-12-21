@@ -384,7 +384,9 @@ func (c OptimizationController) suggest(args suggestArgs) ([]oaiSuggestion, erro
 func (c OptimizationController) groupByType(shots *[]domain.Suggestion, shotsByType *map[string][]domain.Suggestion) {
 	for i := 0; i < len(*shots); i++ {
 		shot := (*shots)[i]
-		if _, ok := (*shotsByType)[shot.Type]; ok {
+
+		_, ok := (*shotsByType)[shot.Type]
+		if ok {
 			(*shotsByType)[shot.Type] = append((*shotsByType)[shot.Type], shot)
 		} else {
 			(*shotsByType)[shot.Type] = []domain.Suggestion{shot}

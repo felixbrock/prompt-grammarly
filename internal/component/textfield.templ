@@ -5,6 +5,7 @@ type TextFieldArgs struct {
 	Prompt      string
 	Placeholder string
 	Enabled     bool
+	Required    bool
 }
 
 templ TextField(args TextFieldArgs) {
@@ -17,6 +18,9 @@ templ TextField(args TextFieldArgs) {
  		rows="1"
  		class="h-full  w-full rounded-md border-0 py-1.5  shadow-sm ring-1 ring-inset bg-black ring-neutral-600 placeholder:text-neutral-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
  		placeholder={ args.Placeholder }
+ 		if args.Required {
+			required
+		}
 	>
 		{ args.Prompt }
 	</textarea>
