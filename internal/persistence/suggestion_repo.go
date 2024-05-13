@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/felixbrock/lemonai/internal/app"
-	"github.com/felixbrock/lemonai/internal/domain"
+	"github.com/felixbrock/prompt-grammarly/internal/app"
+	"github.com/felixbrock/prompt-grammarly/internal/domain"
 )
 
 type SuggestionRepo struct {

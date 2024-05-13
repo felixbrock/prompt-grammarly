@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/felixbrock/lemonai/internal/domain"
+	"github.com/felixbrock/prompt-grammarly/internal/domain"
 	"golang.org/x/time/rate"
 )
 

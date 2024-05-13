@@ -1,4 +1,4 @@
-module github.com/felixbrock/lemonai
+module github.com/felixbrock/prompt-grammarly
 
 go 1.21.3
 

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/felixbrock/lemonai/internal/app"
+	"github.com/felixbrock/prompt-grammarly/internal/app"
 )
 
 type reqConfig struct {

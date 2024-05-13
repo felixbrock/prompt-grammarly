@@ -3,7 +3,7 @@ package component
 import (
 	"fmt"
 
-	"github.com/felixbrock/lemonai/internal/domain"
+	"github.com/felixbrock/prompt-grammarly/internal/domain"
 )
 
 const instructionTitle = "What's Your Prompt Optimization Goal? (Optional)"
@@ -25,19 +25,19 @@ templ actionBar(buttons []actionButton) {
 	<div class="flex flex-row-reverse gap-x-4">
 		for i := 0; i < len(buttons); i++ {
 			<button
- 				type={ buttons[i].Type }
- 				class="relative inline-flex items-center rounded-md bg-black text-white px-3 py-2 text-sm font-semibold  shadow-sm hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
- 				if buttons[i].HxConfig.Method == "GET" {
+				type={ buttons[i].Type }
+				class="relative inline-flex items-center rounded-md bg-black text-white px-3 py-2 text-sm font-semibold  shadow-sm hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+				if buttons[i].HxConfig.Method == "GET" {
 					hx-get={ buttons[i].HxConfig.Endpoint }
 				}
- 				if buttons[i].HxConfig.Method == "POST" {
+				if buttons[i].HxConfig.Method == "POST" {
 					hx-post={ buttons[i].HxConfig.Endpoint }
 					hx-ext="json-enc"
 				}
- 				if buttons[i].HxConfig.Include != "" {
+				if buttons[i].HxConfig.Include != "" {
 					hx-include={ buttons[i].HxConfig.Include }
 				}
- 				if buttons[i].HxConfig.Target != "" {
+				if buttons[i].HxConfig.Target != "" {
 					hx-target={ buttons[i].HxConfig.Target }
 				}
 			>
@@ -74,15 +74,15 @@ templ editorWindow(id string, title string, btns []editorBtn, textFieldArgs Text
 					</div>
 					for i := 0; i < len(btns); i++ {
 						<button
- 							type="button"
- 							class="h-fit w-fit p-1 flex items-center justify-center bg-neutral- rounded-full bg-black text-white shadow-sm fill-white hover:fill-black hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
- 							OnClick={ btns[i].OnClick }
- 							if btns[i].HxConfig.Method == "POST" {
+							type="button"
+							class="h-fit w-fit p-1 flex items-center justify-center bg-neutral- rounded-full bg-black text-white shadow-sm fill-white hover:fill-black hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+							OnClick={ btns[i].OnClick }
+							if btns[i].HxConfig.Method == "POST" {
 								hx-post={ btns[i].HxConfig.Endpoint }
 								hx-ext="json-enc"
 							}
- 							hx-swap="none"
- 							hx-trigger="click"
+							hx-swap="none"
+							hx-trigger="click"
 						>
 							<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d={ btns[i].SvgPath }></path></svg>
 						</button>
@@ -99,39 +99,39 @@ templ editorWindow(id string, title string, btns []editorBtn, textFieldArgs Text
 templ DraftModeEditor() {
 	<form class="h-full w-full" hx-post="/optimizations" hx-target="#editor" hx-ext="json-enc">
 		<div class="h-4/20 w-full pb-4">
-			@editorWindow("instruction-window", instructionTitle, nil,  TextFieldArgs{ 
-			Id: "instructions", 
-			Prompt: "", 
-			Placeholder: "E.g. Fix the following prompt so text will *ALWAYS* be returned in markdown. It keeps breaking my system! Also,...", 
-			Enabled: true,
-			Required: false,
+			@editorWindow("instruction-window", instructionTitle, nil, TextFieldArgs{
+				Id:          "instructions",
+				Prompt:      "",
+				Placeholder: "E.g. Fix the following prompt so text will *ALWAYS* be returned in markdown. It keeps breaking my system! Also,...",
+				Enabled:     true,
+				Required:    false,
 			})
 		</div>
 		<div class="h-14/20 pb-4">
-			@editorWindow("prompt-window", "Your Prompt", nil, TextFieldArgs{ 
-			Id: "prompt", 
-			Prompt: "", 
-			Placeholder: `For example:
-
-Model Instructions:
-"""When formatting code changes, encapsulate every *edit block* within markdown code fencing and specify the appropriate programming language. Begin every *edit block* with the file's full path and avoid proposing edits for *read-only* files. For each *edit block*, ensure the ORIGINAL section accurately reflects a consecutive sequence of lines from the file with no modifications, including:
-
-- All leading spaces and the exact indentation from the original...	`,
-			Enabled: true,
-			Required: true,
+			@editorWindow("prompt-window", "Your Prompt", nil, TextFieldArgs{
+				Id:     "prompt",
+				Prompt: "",
+				Placeholder: `For example:
+			
+			Model Instructions:
+			"""When formatting code changes, encapsulate every *edit block* within markdown code fencing and specify the appropriate programming language. Begin every *edit block* with the file's full path and avoid proposing edits for *read-only* files. For each *edit block*, ensure the ORIGINAL section accurately reflects a consecutive sequence of lines from the file with no modifications, including:
+			
+			- All leading spaces and the exact indentation from the original...	`,
+				Enabled:  true,
+				Required: true,
 			})
 		</div>
 		<div class="h-2/20 pb-4">
-			@actionBar([]actionButton{{Label: "Optimize", Type:"submit" }})
+			@actionBar([]actionButton{{Label: "Optimize", Type: "submit"}})
 		</div>
 	</form>
 }
 
 templ SuggestionWindow(suggs *[]domain.Suggestion) {
-	@sectionWrapper("suggestion-window","Considered Suggestions") {
+	@sectionWrapper("suggestion-window", "Considered Suggestions") {
 		<ul class="px-2 h-full flex flex-col flex-nowrap gap-4 overflow-y-auto overflow-x-hidden">
 			for i := 0; i < len(*suggs); i++ {
-				@SuggestionCard((*suggs)[i], fmt.Sprintf("%d/%d", i+1, len(*suggs) ))
+				@SuggestionCard((*suggs)[i], fmt.Sprintf("%d/%d", i+1, len(*suggs)))
 			}
 		</ul>
 	}
@@ -142,24 +142,24 @@ templ EditModeEditor(id string, original string, optimized string, instructions 
 	// hx-trigger="click,keyup"
 	<form class="h-full w-full" hx-post={ fmt.Sprintf("/optimizations?parent_id=%s", id) } hx-target="#editor" hx-ext="json-enc">
 		<div class="h-3/20 w-full pb-4">
-			@editorWindow("instruction-window", instructionTitle, nil, TextFieldArgs{ Id: "instructions", Prompt: instructions, Placeholder: "", Enabled: true, Required: false })
+			@editorWindow("instruction-window", instructionTitle, nil, TextFieldArgs{Id: "instructions", Prompt: instructions, Placeholder: "", Enabled: true, Required: false})
 		</div>
 		<div class="h-9/20 pb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-			@editorWindow("prompt-window", "Your Prompt", nil, TextFieldArgs{ Id: "prompt", Prompt: original, Placeholder: "", Enabled: true, Required: true})
+			@editorWindow("prompt-window", "Your Prompt", nil, TextFieldArgs{Id: "prompt", Prompt: original, Placeholder: "", Enabled: true, Required: true})
 			@editorWindow("optimized-window",
-			"Optimized Prompt",  
-			[]editorBtn{{
-				SvgPath: "M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z",
-				OnClick: "toClipboard()",
-				HxConfig: hxConfig{Endpoint: fmt.Sprintf("/captures?event_type=%s&optimization_id=%s", "user_copied", id) , Method: "POST"}}},
-			TextFieldArgs{ Id: "optimized", Prompt: optimized, Placeholder: "", Enabled: false, Required: false})
+				"Optimized Prompt",
+				[]editorBtn{{
+					SvgPath:  "M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z",
+					OnClick:  "toClipboard()",
+					HxConfig: hxConfig{Endpoint: fmt.Sprintf("/captures?event_type=%s&optimization_id=%s", "user_copied", id), Method: "POST"}}},
+				TextFieldArgs{Id: "optimized", Prompt: optimized, Placeholder: "", Enabled: false, Required: false})
 		</div>
 		<div class="h-6/20 pb-4">
 			@SuggestionWindow(suggestions)
 		</div>
 		<div class="h-2/20 pb-4">
 			@actionBar(
-			[]actionButton{{Label: "Regenerate", Type: "submit",}})
+				[]actionButton{{Label: "Regenerate", Type: "submit"}})
 		</div>
 	</form>
 }

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/felixbrock/lemonai/internal/domain"
+	"github.com/felixbrock/prompt-grammarly/internal/domain"
 	"github.com/google/uuid"
 )
 

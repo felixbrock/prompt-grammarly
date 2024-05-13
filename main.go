@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/felixbrock/lemonai/internal/app"
-	"github.com/felixbrock/lemonai/internal/component"
-	"github.com/felixbrock/lemonai/internal/persistence"
+	"github.com/felixbrock/prompt-grammarly/internal/app"
+	"github.com/felixbrock/prompt-grammarly/internal/component"
+	"github.com/felixbrock/prompt-grammarly/internal/persistence"
 	_ "go.uber.org/automaxprocs"
 )
 

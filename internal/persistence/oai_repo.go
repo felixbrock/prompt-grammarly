@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/felixbrock/lemonai/internal/app"
+	"github.com/felixbrock/prompt-grammarly/internal/app"
 )
 
 type OAIRepo struct {

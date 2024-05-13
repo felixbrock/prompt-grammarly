@@ -3,7 +3,7 @@ package component
 import (
 	"strings"
 
-	"github.com/felixbrock/lemonai/internal/app"
+	"github.com/felixbrock/prompt-grammarly/internal/app"
 )
 
 templ analysisStateMsg(dimension string, finished bool) {
@@ -32,7 +32,7 @@ templ Loading(optimizationId string, state app.AnalysisState) {
 			@analysisStateMsg("Clarity", state.ClarityCompleted)
 			@analysisStateMsg("Consistency", state.ConsistencyCompleted)
 			<div
- 				if !state.Completed() {
+				if !state.Completed() {
 					class="invisible"
 				}
 			>

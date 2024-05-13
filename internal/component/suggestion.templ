@@ -2,7 +2,7 @@ package component
 
 import (
 	"strings"
-	"github.com/felixbrock/lemonai/internal/domain"
+	"github.com/felixbrock/prompt-grammarly/internal/domain"
 	"unicode/utf8"
 	"fmt"
 )
@@ -36,11 +36,11 @@ templ SuggestionCard(sugg domain.Suggestion, pagination string) {
 			<div class="flex flex-row items-center p-2 gap-2 bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500">
 				<h3 class="grow text-neutral-900 text-left text-lg font-bold ">{ fmt.Sprintf("%s %s", formatSuggType(sugg.Type)  + " Suggestion ", pagination) }</h3>
 				<button
- 					type="button"
- 					class="relative inline-flex items-center rounded-md px-3 py-2 text-sm text-white font-semibold shadow-sm bg-black hover:bg-red-400 hover:text-black  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
- 					hx-patch={ fmt.Sprintf("/suggestions?sugg_id=%s&op_id=%s&feedb_val=%d", sugg.Id, sugg.OptimizationId, -1) }
- 					hx-trigger="click"
- 					hx-target="#suggestion-window"
+					type="button"
+					class="relative inline-flex items-center rounded-md px-3 py-2 text-sm text-white font-semibold shadow-sm bg-black hover:bg-red-400 hover:text-black  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+					hx-patch={ fmt.Sprintf("/suggestions?sugg_id=%s&op_id=%s&feedb_val=%d", sugg.Id, sugg.OptimizationId, -1) }
+					hx-trigger="click"
+					hx-target="#suggestion-window"
 				>
 					Exclude
 				</button>
